@@ -1,11 +1,7 @@
 # Live markets load, then a market opens with its chart and order book streaming.
 appId: com.jakrim.tape
 ---
-- tapOn:
-    text: "Cancel"
-    optional: true
-- launchApp
-- assertVisible: "Markets"
+- runFlow: helpers/launch.yaml
 - extendedWaitUntil:
     visible:
       id: "market-row-BTC"

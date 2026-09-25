@@ -1,0 +1,30 @@
+# Create an on-device wallet on testnet, then try to enable trading.
+# An unfunded wallet must get the exchange's own error, shown verbatim.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- tapOn: "Account"
+- tapOn: "Testnet · trading"
+- runFlow:
+    when:
+      visible:
+        id: "create-device-wallet"
+    commands:
+      - tapOn:
+          id: "create-device-wallet"
+- extendedWaitUntil:
+    visible:
+      id: "wallet-address"
+    timeout: 10000
+- takeScreenshot: account-wallet
+- scrollUntilVisible:
+    element:
+      id: "enable-trading"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "enable-trading"
+- extendedWaitUntil:
+    visible: ".*(Must deposit|Enabled).*"
+    timeout: 20000
+- takeScreenshot: account-enable-trading

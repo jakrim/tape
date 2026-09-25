@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useMarketsFeed } from '@/market/markets';
 import { colors } from '@/ui/theme';
+import { WalletProvider } from '@/wallet/WalletProvider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,29 +36,31 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <ThemeProvider value={navTheme}>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.bg },
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-            headerBackButtonDisplayMode: 'minimal',
-            contentStyle: { backgroundColor: colors.bg },
-          }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="market/[coin]" options={{ title: '' }} />
-          <Stack.Screen
-            name="order"
-            options={{
-              presentation: 'formSheet',
-              headerShown: false,
-              sheetAllowedDetents: [0.92],
-              sheetGrabberVisible: true,
-              sheetCornerRadius: 24,
+        <WalletProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.bg },
+              headerTintColor: colors.text,
+              headerShadowVisible: false,
+              headerBackButtonDisplayMode: 'minimal',
               contentStyle: { backgroundColor: colors.bg },
-            }}
-          />
-        </Stack>
+            }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="market/[coin]" options={{ title: '' }} />
+            <Stack.Screen
+              name="order"
+              options={{
+                presentation: 'formSheet',
+                headerShown: false,
+                sheetAllowedDetents: [0.92],
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 24,
+                contentStyle: { backgroundColor: colors.bg },
+              }}
+            />
+          </Stack>
+        </WalletProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
