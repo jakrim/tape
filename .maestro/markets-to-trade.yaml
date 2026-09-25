@@ -1,0 +1,24 @@
+# Live markets load, then a market opens with its chart and order book streaming.
+appId: com.jakrim.tape
+---
+- tapOn:
+    text: "Cancel"
+    optional: true
+- launchApp
+- assertVisible: "Markets"
+- extendedWaitUntil:
+    visible:
+      id: "market-row-BTC"
+    timeout: 20000
+- assertVisible: "Live"
+- tapOn:
+    id: "market-row-BTC"
+- extendedWaitUntil:
+    visible:
+      id: "order-book"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "candle-chart"
+    timeout: 15000
+- takeScreenshot: trade-btc
