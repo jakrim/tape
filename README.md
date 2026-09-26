@@ -13,6 +13,7 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 - **Wallet.** Privy embedded wallets (EVM and Solana) via email, or a key generated on the device. The wallet approves a trading key once, then every order is signed on the phone with no prompt. The trading key can't withdraw.
 - **Orders.** Market, limit and TWAP, leverage, cross or isolated margin, take profit and stop loss. Positions and PnL come straight from the exchange.
 - **Backend.** Supabase with Sign in with Ethereum. The watchlist is protected by row-level security and tested with pgTAP.
+- **Deposits.** Live Relay quotes for moving USDC from Base, Arbitrum or Ethereum into Hyperliquid. Quote only; no mainnet transactions are sent.
 - **Releases.** EAS Workflows: checks on every PR and a weekly release that ships an over-the-air update or a new store build depending on the native fingerprint.
 
 ## Run it
@@ -37,3 +38,6 @@ maestro test -e DEV_CLIENT=true .maestro   # end-to-end flows on a simulator or 
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md): how data, wallets, orders and releases fit together.
+- [Stack decisions](docs/STACK.md): each choice, what else was considered, and where I've shipped it before.
+- [Real-time data and performance](docs/PERFORMANCE.md): keeping the screen honest, holding the frame rate, and what has been measured.
+- [Shipping](docs/SHIPPING.md): the weekly release pipeline and how I work.
