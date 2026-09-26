@@ -1,0 +1,32 @@
+# Every PR: fast checks that block merge. No builds here; those belong to the release workflow.
+name: PR checks
+
+on:
+  pull_request:
+    branches: ['main']
+
+jobs:
+  typecheck:
+    name: Typecheck
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - run: npm run typecheck
+
+  test:
+    name: Unit tests (trading math, formatting)
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - run: npm test
+
+  fingerprint:
+    name: Native fingerprint
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Compute fingerprint
+        run: |
+          HASH=$(npx @expo/fingerprint . | node -p "JSON.parse(require('node:fs').readFileSync(0, 'utf8')).hash")
+          echo "Fingerprint: $HASH"
+          echo "If this differs from the last store build, merging this PR ships a new binary instead of an OTA update."

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBackend } from '@/backend/session';
 import { useConnection, type Network } from '@/market/clients';
 import { formatUsd, shortAddress } from '@/trading/format';
 import { Button } from '@/ui/Button';
@@ -142,6 +143,7 @@ function WalletCard() {
       </View>
       <Row label={`Account value (${network})`} value={accountValue === null ? '—' : formatUsd(accountValue)} />
       <Row label="Withdrawable" value={withdrawable === null ? '—' : formatUsd(withdrawable)} tone="muted" />
+      <BackendRow />
       {network === 'testnet' && unfunded ? (
         <View style={styles.notice}>
           <Text variant="bodyStrong">Fund this wallet with test USDC</Text>
@@ -153,6 +155,20 @@ function WalletCard() {
       ) : null}
       <SignOut />
     </Card>
+  );
+}
+
+// The backend session comes from Sign in with Ethereum: the wallet signed a SIWE message at launch.
+function BackendRow() {
+  const status = useBackend((s) => s.status);
+  const error = useBackend((s) => s.error);
+  if (status === 'off') return null;
+  const value = status === 'signed-in' ? 'Signed in with Ethereum' : status === 'signing-in' ? 'Signing in…' : 'Sign-in failed';
+  return (
+    <>
+      <Row label="Backend" value={value} tone={status === 'signed-in' ? 'up' : status === 'error' ? 'warning' : 'muted'} />
+      {error ? <Text variant="caption" tone="warning">{error}</Text> : null}
+    </>
   );
 }
 

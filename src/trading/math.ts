@@ -81,7 +81,10 @@ export function estimateLiquidationPrice(p: {
   const l = 1 / (2 * maxLeverage);
   const notional = entryPx * size;
   const maintenance = notional * l;
-  const collateral = isCross && accountValue !== undefined ? accountValue : notional / leverage;
+  const posted = notional / leverage;
+  // Cross margin draws on the whole account, but an accepted order always posts at least its
+  // initial margin; with less than that the exchange rejects it, so never estimate below it.
+  const collateral = isCross && accountValue !== undefined ? Math.max(accountValue, posted) : posted;
   const marginAvailable = collateral - maintenance;
   const liq = entryPx - (s * marginAvailable) / size / (1 - l * s);
   return liq > 0 ? liq : null;

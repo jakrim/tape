@@ -1,0 +1,30 @@
+# The order ticket opens from a market and never lets an order through that can't be placed:
+# on mainnet (view only) the submit button must explain why instead of submitting.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "market-row-ETH"
+    timeout: 20000
+- tapOn:
+    id: "market-row-ETH"
+- extendedWaitUntil:
+    visible:
+      id: "order-book"
+    timeout: 15000
+- tapOn:
+    id: "long-button"
+- extendedWaitUntil:
+    visible:
+      id: "order-ticket"
+    timeout: 10000
+- tapOn:
+    id: "amount-input"
+- inputText: "250"
+- hideKeyboard
+- assertVisible: "Est. liquidation"
+- scrollUntilVisible:
+    element: "Trading is on testnet"
+    direction: DOWN
+- takeScreenshot: order-ticket-mainnet

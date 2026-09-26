@@ -77,6 +77,14 @@ test('cross liquidation uses the whole account value', () => {
   assert.ok(isolated !== null && cross !== null && cross < isolated);
 });
 
+test('an empty cross account never puts a long liquidation above entry', () => {
+  // Regression: with $0 account value the estimate used to land above the entry price.
+  const liq = estimateLiquidationPrice({
+    side: 'long', entryPx: 2691.4, size: 0.0929, leverage: 10, maxLeverage: 25, isCross: true, accountValue: 0,
+  });
+  assert.ok(liq !== null && liq < 2691.4, `got ${liq}`);
+});
+
 test('a fully collateralized long cannot be liquidated', () => {
   const liq = estimateLiquidationPrice({
     side: 'long', entryPx: 100, size: 1, leverage: 1, maxLeverage: 50, isCross: false,

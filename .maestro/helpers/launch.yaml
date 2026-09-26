@@ -7,7 +7,7 @@ appId: com.jakrim.tape
     when:
       true: ${DEV_CLIENT == 'true'}
     commands:
-      - openLink: com.jakrim.tape://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081&disableOnboarding=1
+      - openLink: tape://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081&disableOnboarding=1
       - tapOn:
           text: "Open"
           optional: true

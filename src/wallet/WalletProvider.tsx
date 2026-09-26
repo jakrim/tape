@@ -1,12 +1,15 @@
 import { PrivyProvider, useEmbeddedEthereumWallet, usePrivy } from '@privy-io/expo';
 import { useEffect, type ReactNode } from 'react';
 import { createWalletClient, custom } from 'viem';
+import type { PrivateKeyAccount } from 'viem/accounts';
 
+import { signInWithWallet, signOutOfBackend, useBackend } from '@/backend/session';
 import { useConnection } from '@/market/clients';
+import { syncFavorites } from '@/market/favorites';
 
 import { useAccountFeed } from './account';
 import { createKey, deleteKey, keyNames, loadKey } from './keys';
-import { useWallet } from './store';
+import { useWallet, type Owner } from './store';
 import { refreshAgent, useTrading } from './trading';
 
 export const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID;
@@ -43,7 +46,7 @@ function DeviceWalletLoader() {
   useEffect(() => {
     loadKey(keyNames.deviceOwner).then((account) => {
       if (!account || useWallet.getState().owner) return;
-      useWallet.getState().setOwner({ kind: 'device', address: account.address, signer: account, label: 'Device wallet' });
+      useWallet.getState().setOwner(deviceOwner(account));
     });
   }, []);
   return null;
@@ -68,7 +71,13 @@ function PrivyOwnerSync() {
       const signer = createWalletClient({ account: address, transport: custom(provider) });
       const email = user.linked_accounts.find((a) => a.type === 'email');
       const label = email && 'address' in email ? String(email.address) : 'Privy wallet';
-      useWallet.getState().setOwner({ kind: 'privy', address, signer, label });
+      useWallet.getState().setOwner({
+        kind: 'privy',
+        address,
+        signer,
+        signMessage: (message) => signer.signMessage({ account: address, message }),
+        label,
+      });
     });
     return () => {
       cancelled = true;
@@ -89,12 +98,33 @@ function WalletEffects() {
     else useTrading.setState({ status: 'none', agent: null, error: null });
   }, [owner, network]);
 
+  // Sign in to the backend with the wallet itself (SIWE), then load the saved watchlist.
+  useEffect(() => {
+    if (!owner) {
+      signOutOfBackend();
+      return;
+    }
+    signInWithWallet(owner).then(() => {
+      if (useBackend.getState().status === 'signed-in') syncFavorites();
+    });
+  }, [owner]);
+
   return null;
+}
+
+function deviceOwner(account: PrivateKeyAccount): Owner {
+  return {
+    kind: 'device',
+    address: account.address,
+    signer: account,
+    signMessage: (message) => account.signMessage({ message }),
+    label: 'Device wallet',
+  };
 }
 
 export async function createDeviceWallet() {
   const account = await createKey(keyNames.deviceOwner);
-  useWallet.getState().setOwner({ kind: 'device', address: account.address, signer: account, label: 'Device wallet' });
+  useWallet.getState().setOwner(deviceOwner(account));
 }
 
 export async function removeDeviceWallet() {

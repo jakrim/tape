@@ -1,0 +1,126 @@
+# Weekly release, iOS + Android, no humans in the loop until store review.
+#
+# Every Tuesday 14:00 GMT (or on demand from the EAS dashboard):
+#   1. Gate: typecheck + unit tests.
+#   2. Gate: build a release-config Android APK and run the Maestro flows against it.
+#   3. Fingerprint the native layer per platform.
+#   4. If a store build with that exact fingerprint exists, the change is JS-only:
+#      ship it as an over-the-air update (minutes, no review).
+#      Otherwise build fresh binaries and submit them (TestFlight / Play internal track).
+#
+# Same fingerprint "smart deploy" pattern shipped in Get Mentors, on a schedule instead of per push.
+
+name: Weekly release
+
+on:
+  schedule:
+    - cron: '0 14 * * 2'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    name: Typecheck + unit tests
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - run: npm run typecheck
+      - run: npm test
+
+  e2e_build:
+    name: Build Android APK for E2E
+    needs: [check]
+    type: build
+    params:
+      platform: android
+      profile: e2e
+
+  e2e:
+    name: Maestro flows
+    needs: [e2e_build]
+    type: maestro
+    params:
+      build_id: ${{ needs.e2e_build.outputs.build_id }}
+      flow_path: ['.maestro/markets-to-trade.yaml', '.maestro/wallet-setup.yaml', '.maestro/order-ticket.yaml']
+      retries: 1
+
+  fingerprint:
+    name: Fingerprint native layer
+    needs: [e2e]
+    type: fingerprint
+    environment: production
+
+  get_ios_build:
+    name: Existing iOS store build?
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: production
+      platform: ios
+      distribution: store
+
+  get_android_build:
+    name: Existing Android store build?
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      profile: production
+      platform: android
+      distribution: store
+
+  update_ios:
+    name: OTA update (iOS)
+    needs: [get_ios_build]
+    if: ${{ needs.get_ios_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      branch: production
+      platform: ios
+      message: 'Weekly release ${{ github.sha }}'
+
+  update_android:
+    name: OTA update (Android)
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      branch: production
+      platform: android
+      message: 'Weekly release ${{ github.sha }}'
+
+  build_ios:
+    name: Build iOS (native change)
+    needs: [get_ios_build]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  build_android:
+    name: Build Android (native change)
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  submit_ios:
+    name: Submit to TestFlight
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
+
+  submit_android:
+    name: Submit to Play internal track
+    needs: [build_android]
+    type: submit
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      profile: production

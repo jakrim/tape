@@ -1,5 +1,6 @@
 # Create an on-device wallet on testnet, then try to enable trading.
 # An unfunded wallet must get the exchange's own error, shown verbatim.
+# With BACKEND=true, the wallet must also sign in to Supabase with Ethereum (SIWE).
 appId: com.jakrim.tape
 ---
 - runFlow: helpers/launch.yaml
@@ -16,6 +17,13 @@ appId: com.jakrim.tape
     visible:
       id: "wallet-address"
     timeout: 10000
+- runFlow:
+    when:
+      true: ${BACKEND == 'true'}
+    commands:
+      - extendedWaitUntil:
+          visible: "Signed in with Ethereum"
+          timeout: 20000
 - takeScreenshot: account-wallet
 - scrollUntilVisible:
     element:

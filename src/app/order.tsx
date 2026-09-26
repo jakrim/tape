@@ -110,7 +110,7 @@ export default function OrderTicket() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="order-ticket">
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" testID="order-ticket">
       <View style={styles.head}>
         <Text variant="title">{coin}</Text>
         <Text variant="num" tone="muted">

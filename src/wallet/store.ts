@@ -11,6 +11,7 @@ export type Owner = {
   kind: OwnerKind;
   address: `0x${string}`;
   signer: AbstractWallet;
+  signMessage: (message: string) => Promise<`0x${string}`>; // plain EIP-191 signing, used for Sign in with Ethereum
   label: string; // e.g. the Privy login email
 };
 
