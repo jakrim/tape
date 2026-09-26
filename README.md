@@ -18,7 +18,7 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 
 ## Try it on Android
 
-Install the release APK on an Android phone: [Tape APK](https://expo.dev/artifacts/eas/tWXOY3Z8hv2CndSqb3_lIBqTfvkUMznygUPAuKJYa_M.apk) (173 MB, preview build from EAS). The Account screen has a diagnostics panel with live frame rates.
+Install the release APK on an Android phone: [Tape APK](https://expo.dev/artifacts/eas/-f1xQrxDa55aChifE-v9iZUwEG068-fpeXhI4ZkKrNE.apk) (173 MB, preview build from EAS). The Account screen has live frame rates and a 15 s stress test.
 
 ## Run it
 
