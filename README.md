@@ -16,6 +16,10 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 - **Deposits.** Live Relay quotes for moving USDC from Base, Arbitrum or Ethereum into Hyperliquid. Quote only; no mainnet transactions are sent.
 - **Releases.** EAS Workflows: checks on every PR and a weekly release that ships an over-the-air update or a new store build depending on the native fingerprint.
 
+## Try it on Android
+
+Install the release APK on an Android phone: [Tape APK](https://expo.dev/artifacts/eas/tWXOY3Z8hv2CndSqb3_lIBqTfvkUMznygUPAuKJYa_M.apk) (173 MB, preview build from EAS). The Account screen has a diagnostics panel with live frame rates.
+
 ## Run it
 
 ```bash
