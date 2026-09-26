@@ -120,6 +120,7 @@ function EmailLogin() {
 
 function WalletCard() {
   const owner = useWallet((s) => s.owner)!;
+  const solanaAddress = useWallet((s) => s.solanaAddress);
   const network = useConnection((s) => s.network);
   const accountValue = useAccount((s) => s.accountValue);
   const withdrawable = useAccount((s) => s.withdrawable);
@@ -141,6 +142,7 @@ function WalletCard() {
         </View>
         <Button title="Copy" kind="secondary" onPress={copy} style={styles.smallButton} />
       </View>
+      {solanaAddress ? <Row label="Solana wallet" value={shortAddress(solanaAddress)} tone="muted" /> : null}
       <Row label={`Account value (${network})`} value={accountValue === null ? '—' : formatUsd(accountValue)} />
       <Row label="Withdrawable" value={withdrawable === null ? '—' : formatUsd(withdrawable)} tone="muted" />
       <BackendRow />

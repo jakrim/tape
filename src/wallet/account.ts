@@ -4,7 +4,7 @@ import { create } from 'zustand';
 
 import { onNextFrame } from '@/market/batcher';
 import { getClients, useConnection } from '@/market/clients';
-import { counters, reportFeedError } from '@/market/diagnostics';
+import { countMessage, reportFeedError } from '@/market/diagnostics';
 
 import { useWallet } from './store';
 
@@ -68,7 +68,7 @@ export function useAccountFeed() {
     track(
       'account',
       subs.clearinghouseState({ user }, (event) => {
-        counters.user++;
+        countMessage('user');
         onNextFrame('account', () => {
           const s = event.clearinghouseState;
           useAccount.setState({
@@ -96,7 +96,7 @@ export function useAccountFeed() {
     track(
       'orders',
       subs.openOrders({ user }, (event) => {
-        counters.user++;
+        countMessage('user');
         onNextFrame('orders', () => {
           useAccount.setState({
             orders: event.orders.map((o) => ({

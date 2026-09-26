@@ -1,4 +1,4 @@
-import { PrivyProvider, useEmbeddedEthereumWallet, usePrivy } from '@privy-io/expo';
+import { PrivyProvider, useEmbeddedEthereumWallet, useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
 import { useEffect, type ReactNode } from 'react';
 import { createWalletClient, custom } from 'viem';
 import type { PrivateKeyAccount } from 'viem/accounts';
@@ -54,8 +54,22 @@ function DeviceWalletLoader() {
 
 function PrivyOwnerSync() {
   const { user } = usePrivy();
-  const { wallets } = useEmbeddedEthereumWallet();
+  const { wallets, create } = useEmbeddedEthereumWallet();
+  const solana = useEmbeddedSolanaWallet();
   const wallet = wallets[0];
+
+  // Privy's create-on-login only covers its built-in modal. Tape uses its own email screen,
+  // so create the EVM and Solana wallets once after login if the user has none.
+  useEffect(() => {
+    if (!user) return;
+    if (wallets.length === 0) create().catch((e) => console.warn('[privy] evm wallet', e));
+    if (solana.status === 'not-created') solana.create?.().catch((e) => console.warn('[privy] solana wallet', e));
+  }, [user, wallets.length, create, solana]);
+
+  useEffect(() => {
+    const address = solana.status === 'connected' ? solana.wallets[0]?.address : undefined;
+    useWallet.setState({ solanaAddress: address ?? null });
+  }, [solana]);
 
   useEffect(() => {
     useWallet.setState({ privyPending: Boolean(user && !wallet) });

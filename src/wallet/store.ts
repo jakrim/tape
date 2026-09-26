@@ -19,11 +19,13 @@ type WalletState = {
   owner: Owner | null;
   // Set when Privy has a logged-in user but the embedded wallet is still being created/connected.
   privyPending: boolean;
+  solanaAddress: string | null; // Privy creates a Solana wallet alongside the EVM one
   setOwner: (owner: Owner | null) => void;
 };
 
 export const useWallet = create<WalletState>((set) => ({
   owner: null,
   privyPending: false,
+  solanaAddress: null,
   setOwner: (owner) => set({ owner }),
 }));

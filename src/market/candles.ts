@@ -3,7 +3,7 @@ import { create } from 'zustand';
 
 import { onNextFrame } from './batcher';
 import { getClients, useConnection } from './clients';
-import { counters, reportFeedError } from './diagnostics';
+import { countMessage, reportFeedError } from './diagnostics';
 
 export const INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const;
 export type Interval = (typeof INTERVALS)[number];
@@ -55,7 +55,7 @@ export function useCandles(coin: string, interval: Interval) {
         if (cancelled) return;
         useCandleStore.setState({ candles: history.map(parse), loading: false });
         return subs.candle({ coin, interval }, (event) => {
-          counters.candle++;
+          countMessage('candle');
           onNextFrame(`candle:${key}`, () => {
             if (useCandleStore.getState().key !== key) return;
             useCandleStore.setState((s) => ({ candles: upsertCandle(s.candles, parse(event)) }));

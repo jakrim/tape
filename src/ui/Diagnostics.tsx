@@ -53,19 +53,25 @@ export function Diagnostics() {
   }, []);
 
   const last = useRef<{ at: number; js: number; ui: number; msgs: number } | null>(null);
+  // Message rate over a 10 s window: some streams only tick every ~4 s, so a 1 s window reads 0.
+  const msgSamples = useRef<{ at: number; msgs: number }[]>([]);
   const [snap, setSnap] = useState<Snapshot>(initial);
   useEffect(() => {
     const cur = { at: now, js: jsFrames.current, ui: uiFrames.value, msgs: totalMessages() };
     const prev = last.current;
     last.current = cur;
     if (!prev || cur.at === prev.at) return;
+    const samples = msgSamples.current;
+    samples.push({ at: cur.at, msgs: cur.msgs });
+    while (samples.length > 1 && cur.at - samples[0].at > 10_000) samples.shift();
+    const windowSecs = Math.max((cur.at - samples[0].at) / 1000, 1);
     const secs = (cur.at - prev.at) / 1000;
     const total = batchStats.jobsApplied + batchStats.jobsDropped;
     setSnap({
       uiFps: Math.round((cur.ui - prev.ui) / secs),
       jsFps: Math.round((cur.js - prev.js) / secs),
       longFrames: uiLongFrames.value,
-      msgsPerSec: Math.round(((cur.msgs - prev.msgs) / secs) * 10) / 10,
+      msgsPerSec: Math.round(((cur.msgs - samples[0].msgs) / windowSecs) * 10) / 10,
       frames: batchStats.frames,
       merged: batchStats.jobsDropped,
       mergedPct: total > 0 ? Math.round((batchStats.jobsDropped / total) * 100) : 0,
@@ -80,7 +86,7 @@ export function Diagnostics() {
       <Row label="UI thread" value={`${snap.uiFps} fps`} tone={snap.uiFps >= 55 ? 'up' : 'warning'} />
       <Row label="JS thread" value={`${snap.jsFps} fps`} tone={snap.jsFps >= 55 ? 'up' : 'warning'} />
       <Row label="Long UI frames since open" value={String(snap.longFrames)} tone="muted" />
-      <Row label="Socket messages" value={`${snap.msgsPerSec}/s`} />
+      <Row label="Socket messages (10s avg)" value={`${snap.msgsPerSec}/s`} />
       <Row label="Frames that applied updates" value={String(snap.frames)} tone="muted" />
       <Row label="Updates merged before render" value={`${snap.merged} (${snap.mergedPct}%)`} tone="muted" />
       <Row label="Slowest frame apply" value={`${snap.maxApplyMs.toFixed(1)} ms`} tone="muted" />

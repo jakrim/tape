@@ -4,7 +4,7 @@ import { create } from 'zustand';
 
 import { onNextFrame } from './batcher';
 import { getClients, useConnection } from './clients';
-import { counters, reportFeedError } from './diagnostics';
+import { countMessage, reportFeedError } from './diagnostics';
 import { parseCtx, type AssetCtx } from './markets';
 
 export type BookLevel = { px: number; sz: number; total: number };
@@ -64,7 +64,7 @@ export function useCoinFeed(coin: string) {
     track(
       'book',
       subs.l2Book({ coin, fast: true }, (event) => {
-        counters.book++;
+        countMessage('book');
         onNextFrame(`book:${coin}`, () => {
           const current = useCoin.getState();
           if (current.coin !== coin) return;
@@ -79,7 +79,7 @@ export function useCoinFeed(coin: string) {
     track(
       'trades',
       subs.trades({ coin }, (event) => {
-        counters.trades++;
+        countMessage('trades');
         for (const t of event) {
           tradeBuffer.push({ id: t.tid, px: Number(t.px), sz: Number(t.sz), side: t.side === 'B' ? 'buy' : 'sell', time: t.time });
         }
@@ -95,7 +95,7 @@ export function useCoinFeed(coin: string) {
     track(
       'assetCtx',
       subs.activeAssetCtx({ coin }, (event) => {
-        counters.assetCtx++;
+        countMessage('assetCtx');
         onNextFrame(`ctx:${coin}`, () => {
           if (useCoin.getState().coin !== coin) return;
           useCoin.setState({ ctx: parseCtx(event.ctx), ctxAt: Date.now() });

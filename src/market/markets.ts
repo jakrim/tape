@@ -4,7 +4,7 @@ import { create } from 'zustand';
 
 import { onNextFrame } from './batcher';
 import { getClients, reconnect, useConnection, type Network } from './clients';
-import { counters, reportFeedError } from './diagnostics';
+import { countMessage, reportFeedError } from './diagnostics';
 
 export type Perp = {
   coin: string;
@@ -133,7 +133,7 @@ export function useMarketsFeed() {
       .then(() => {
         if (cancelled) return;
         return getClients(network).subs.assetCtxs((event) => {
-          counters.markets++;
+          countMessage('markets');
           onNextFrame('markets', () => applyCtxs(event.ctxs));
         });
       })

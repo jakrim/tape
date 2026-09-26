@@ -2,6 +2,15 @@
 // The diagnostics screen reads them on the shared one-second clock.
 export const counters = { markets: 0, book: 0, trades: 0, assetCtx: 0, candle: 0, user: 0 };
 
+/**
+ * Always count through this plain function. Writing `counters.book++` inside a hook gets
+ * miscompiled by the React Compiler into `counters.book = _module.book + 1` (NaN), because
+ * the read side loses the object. Plain module functions are not compiled.
+ */
+export function countMessage(stream: keyof typeof counters) {
+  counters[stream] += 1;
+}
+
 export function totalMessages(): number {
   return counters.markets + counters.book + counters.trades + counters.assetCtx + counters.candle + counters.user;
 }
