@@ -69,9 +69,10 @@ It reports UI and JS frame rates (average and lowest) and the longest JS-thread 
 |---|---|
 | iOS simulator, debug build, normal traffic | UI thread 60 fps, JS thread 60 fps. Slowest frame spent applying market updates: 1.5 ms. The batcher merged 0 updates, because at normal rates two updates for one stream rarely land in the same frame. |
 | iOS simulator, debug build, stress test, hands-off (load average 13 to 35 on the Mac) | 1,331 synthetic messages in 15 s. Lowest UI 34 fps, lowest JS 28 fps, longest JS stall 63 ms. The batcher merged 26% of updates before render. |
+| iOS simulator, **release build**, stress test, hands-off (load average 75 to 85 on the Mac) | 2,626 synthetic messages in 15 s, the full target rate. UI thread average 58 fps (lowest 43), JS thread average 59 fps (lowest 44), longest JS stall 25 ms. Slowest frame spent applying updates: 0.6 ms of the 16.7 ms budget. The batcher merged 28% of updates. |
 | Android emulator (Pixel 6a profile) | All end-to-end flows pass. No frame numbers are reported: the emulator ran on a heavily loaded Mac and emulators are not representative of phones. |
 
-Debug builds run React in development mode, which is several times slower than a release build, so the debug stress numbers are a floor. Test tooling also affects results: on the iOS simulator, a Maestro screenshot or accessibility query during the test paused the display and produced false dips, so the stress numbers above were taken with no test tooling touching the app while it ran.
+Debug builds run React in development mode; the release build did twice the work with a quarter of the worst JS stall. Test tooling also affects results: on the iOS simulator, a Maestro screenshot or accessibility query during the test paused the display and produced false dips, so the stress numbers above were taken with no test tooling touching the app while it ran.
 
 **Not yet measured:** a release build on a physical mid-range Android phone. The plan is to install the preview APK on a Pixel 6a or Galaxy A-series device, run the stress test, and record `adb shell dumpsys gfxinfo com.jakrim.tape` (janky-frame percentage and frame-time percentiles) plus a Perfetto trace of JS-thread work. If parsing the all-markets payload shows up, the candidates are a relay that sends only changed markets, or parsing on a separate worklet runtime.
 
