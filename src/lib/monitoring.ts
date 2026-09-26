@@ -6,7 +6,8 @@ const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 Sentry.init({
   dsn: DSN,
   enabled: Boolean(DSN),
-  tracesSampleRate: 0.2,
+  // 5% of sessions traced: enough signal at 50k users without paying to trace everyone.
+  tracesSampleRate: 0.05,
   sendDefaultPii: false,
 });
 

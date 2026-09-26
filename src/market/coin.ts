@@ -6,10 +6,12 @@ import { onNextFrame } from './batcher';
 import { getClients, useConnection } from './clients';
 import { countMessage, reportFeedError } from './diagnostics';
 import { parseCtx, type AssetCtx } from './markets';
+import { mergeTrades, type Trade } from './trades';
+
+export type { Trade };
 
 export type BookLevel = { px: number; sz: number; total: number };
 export type Book = { bids: BookLevel[]; asks: BookLevel[]; time: number };
-export type Trade = { id: number; px: number; sz: number; side: 'buy' | 'sell'; time: number };
 
 type CoinState = {
   coin: string | null;
@@ -44,11 +46,20 @@ let tradeBuffer: Trade[] = [];
  * and the focused asset context (mark, funding, OI about once a second).
  * Subscriptions share the app's single socket and are released when the screen unmounts.
  */
+let feedKey = '';
+
 export function useCoinFeed(coin: string) {
   const network = useConnection((s) => s.network);
+  const epoch = useConnection((s) => s.epoch);
 
   useEffect(() => {
-    useCoin.setState({ coin, ...empty });
+    // A new market or network starts clean. A new socket for the same market (after the app
+    // returns from the background) keeps the last values; the badges say they aren't live yet.
+    const key = `${network}:${coin}`;
+    if (key !== feedKey) {
+      useCoin.setState({ coin, ...empty });
+      feedKey = key;
+    }
     tradeBuffer = [];
     const { subs } = getClients(network);
     let cancelled = false;
@@ -85,9 +96,9 @@ export function useCoinFeed(coin: string) {
         }
         onNextFrame(`trades:${coin}`, () => {
           if (useCoin.getState().coin !== coin) return;
-          const incoming = tradeBuffer.reverse();
+          const incoming = tradeBuffer;
           tradeBuffer = [];
-          useCoin.setState((s) => ({ trades: [...incoming, ...s.trades].slice(0, MAX_TRADES) }));
+          useCoin.setState((s) => ({ trades: mergeTrades(incoming, s.trades, MAX_TRADES) }));
         });
       }),
     );
@@ -107,7 +118,7 @@ export function useCoinFeed(coin: string) {
       cancelled = true;
       handles.forEach((h) => h.unsubscribe().catch(() => {}));
     };
-  }, [coin, network]);
+  }, [coin, network, epoch]);
 }
 
 /** Best bid/ask midpoint from the live book, or null if the book isn't loaded. */

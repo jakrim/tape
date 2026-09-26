@@ -18,8 +18,9 @@ export function LiveBadge({ updatedAt, staleAfterMs }: Props) {
   const age = useAgeSeconds(updatedAt);
 
   let label = 'Live';
-  if (status === 'connecting' && updatedAt === null) label = 'Connecting';
+  if (status === 'connecting') label = 'Connecting';
   else if (status === 'reconnecting') label = 'Reconnecting';
+  else if (status === 'paused') label = 'Paused';
   else if (!live) label = age === null ? 'Waiting for data' : `Delayed ${age}s`;
 
   return (

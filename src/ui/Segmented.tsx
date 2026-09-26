@@ -1,8 +1,8 @@
-import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from './Text';
 import { colors, radius, space } from './theme';
+import { haptic } from './haptics';
 
 type Props<T extends string> = {
   options: readonly { value: T; label: string }[];
@@ -27,7 +27,7 @@ export function Segmented<T extends string>({ options, value, onChange, activeCo
             accessibilityState={{ selected }}
             onPress={() => {
               if (selected) return;
-              Haptics.selectionAsync();
+              haptic('select');
               onChange(opt.value);
             }}
             style={[styles.item, size === 'sm' && styles.itemSm, { backgroundColor: bg }]}>

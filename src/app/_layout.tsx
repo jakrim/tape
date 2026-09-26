@@ -6,8 +6,11 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Sentry } from '@/lib/monitoring';
+import { useStreamLifecycle } from '@/market/clients';
 import { useMarketsFeed } from '@/market/markets';
 import { colors } from '@/ui/theme';
+import { StressOverlay } from '@/ui/StressOverlay';
+import { ToastHost } from '@/ui/Toast';
 import { WalletProvider } from '@/wallet/WalletProvider';
 
 SplashScreen.preventAutoHideAsync();
@@ -27,6 +30,7 @@ const navTheme = {
 function RootLayout() {
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   useMarketsFeed();
+  useStreamLifecycle();
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
@@ -72,6 +76,8 @@ function RootLayout() {
               }}
             />
           </Stack>
+          <StressOverlay />
+          <ToastHost />
         </WalletProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

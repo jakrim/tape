@@ -1,5 +1,6 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import type { Book, BookLevel } from '@/market/coin';
 import { formatPct, formatPrice } from '@/trading/format';
@@ -37,12 +38,7 @@ export const OrderBook = memo(function OrderBook({ book, sizeDecimals, onPressPr
       accessibilityLabel={level ? `${side} ${formatPrice(level.px)}` : undefined}>
       {level ? (
         <>
-          <View
-            style={[
-              styles.depth,
-              { width: `${(level.total / maxTotal) * 100}%`, backgroundColor: side === 'bid' ? colors.upFaint : colors.downFaint },
-            ]}
-          />
+          <DepthBar fraction={level.total / maxTotal} color={side === 'bid' ? colors.upFaint : colors.downFaint} />
           <Text variant="numSmall" tone={side === 'bid' ? 'up' : 'down'} style={styles.px}>
             {formatPrice(level.px)}
           </Text>
@@ -76,6 +72,17 @@ export const OrderBook = memo(function OrderBook({ book, sizeDecimals, onPressPr
     </View>
   );
 });
+
+/** Depth glides to its new width on the UI thread instead of jumping twice a second. */
+function DepthBar({ fraction, color }: { fraction: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const width = useSharedValue(fraction);
+  useEffect(() => {
+    width.set(reduceMotion ? fraction : withTiming(fraction, { duration: 220 }));
+  }, [fraction, width, reduceMotion]);
+  const animated = useAnimatedStyle(() => ({ width: `${Math.min(1, Math.max(0, width.value)) * 100}%` }));
+  return <Animated.View style={[styles.depth, { backgroundColor: color }, animated]} />;
+}
 
 const styles = StyleSheet.create({
   head: { flexDirection: 'row', paddingHorizontal: space.lg, paddingBottom: space.xs },

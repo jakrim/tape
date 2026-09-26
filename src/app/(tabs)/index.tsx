@@ -1,16 +1,17 @@
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useConnection } from '@/market/clients';
 import { useFavorites } from '@/market/favorites';
 import { STALE_AFTER } from '@/market/freshness';
-import { retryMarkets, useMarkets } from '@/market/markets';
+import { refreshMarkets, retryMarkets, useLiveMarkets, useMarkets } from '@/market/markets';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { LiveBadge } from '@/ui/LiveBadge';
-import { MarketRow } from '@/ui/MarketRow';
+import { MARKET_ROW_HEIGHT, MarketRow } from '@/ui/MarketRow';
+import { MarketListSkeleton } from '@/ui/Skeleton';
 import { Text } from '@/ui/Text';
 import { colors, fonts, radius, space } from '@/ui/theme';
 
@@ -24,6 +25,7 @@ const SORTS: { value: Sort; label: string }[] = [
 ];
 
 export default function MarketsScreen() {
+  useLiveMarkets();
   const network = useConnection((s) => s.network);
   const perps = useMarkets((s) => s.perps);
   const updatedAt = useMarkets((s) => s.updatedAt);
@@ -31,6 +33,7 @@ export default function MarketsScreen() {
   const favorites = useFavorites((s) => s.coins);
   const [sort, setSort] = useState<Sort>('volume');
   const [query, setQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // The order is computed when the sort, search or market list changes, not on every tick,
   // so rows never jump under the user's thumb while prices update.
@@ -81,9 +84,7 @@ export default function MarketsScreen() {
           <Button title="Try again" kind="secondary" onPress={retryMarkets} style={{ marginTop: space.lg }} />
         </View>
       ) : perps.length === 0 ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+        <MarketListSkeleton rowHeight={MARKET_ROW_HEIGHT} />
       ) : (
         <FlashList
           // A sort change reorders every row. Recycled cells from the previous order left the first
@@ -95,6 +96,17 @@ export default function MarketsScreen() {
           keyExtractor={(c) => c}
           renderItem={({ item }) => <MarketRow coin={item} />}
           keyboardDismissMode="on-drag"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              tintColor={colors.accent}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await refreshMarkets();
+                setRefreshing(false);
+              }}
+            />
+          }
           contentInsetAdjustmentBehavior="automatic"
           ListEmptyComponent={
             <View style={styles.center}>

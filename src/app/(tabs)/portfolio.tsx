@@ -24,6 +24,7 @@ export default function PortfolioScreen() {
   const marginUsed = useAccount((s) => s.marginUsed);
   const positions = useAccount((s) => s.positions);
   const orders = useAccount((s) => s.orders);
+  const fills = useAccount((s) => s.fills);
   const updatedAt = useAccount((s) => s.updatedAt);
   const totalPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0);
 
@@ -70,6 +71,31 @@ export default function PortfolioScreen() {
               <Card>
                 {orders.map((o) => (
                   <OrderRow key={o.oid} order={o} />
+                ))}
+              </Card>
+            )}
+
+            <Text variant="heading">Recent fills</Text>
+            {fills.length === 0 ? (
+              <Text tone="faint">No fills yet</Text>
+            ) : (
+              <Card>
+                {fills.map((f) => (
+                  <View key={f.id} style={styles.order} testID="fill-row">
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyStrong">
+                        {f.coin} <Text tone={f.side === 'buy' ? 'up' : 'down'}>{f.dir}</Text>
+                      </Text>
+                      <Text variant="numSmall" tone="muted">
+                        {f.sz} @ {formatPrice(f.px)} · {new Date(f.time).toLocaleTimeString()}
+                      </Text>
+                    </View>
+                    {f.closedPnl !== 0 ? (
+                      <Text variant="num" tone={f.closedPnl >= 0 ? 'up' : 'down'}>
+                        {formatUsd(f.closedPnl)}
+                      </Text>
+                    ) : null}
+                  </View>
                 ))}
               </Card>
             )}

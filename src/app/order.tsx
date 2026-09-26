@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -8,6 +7,7 @@ import { useConnection } from '@/market/clients';
 import { bookMid, useCoin } from '@/market/coin';
 import { STALE_AFTER, useIsLive } from '@/market/freshness';
 import { useMarkets } from '@/market/markets';
+import { useStress } from '@/market/stress';
 import { formatPrice, formatUsd } from '@/trading/format';
 import {
   estimateLiquidationPrice,
@@ -21,11 +21,13 @@ import { submitTicket, type Outcome } from '@/trading/orders';
 import { Button } from '@/ui/Button';
 import { Row } from '@/ui/Card';
 import { Segmented } from '@/ui/Segmented';
+import { Slider } from '@/ui/Slider';
 import { Text } from '@/ui/Text';
 import { colors, fonts, radius, space } from '@/ui/theme';
 import { useAccount } from '@/wallet/account';
 import { useWallet } from '@/wallet/store';
 import { messageOf, useTrading } from '@/wallet/trading';
+import { haptic } from '@/ui/haptics';
 
 const LEVERAGE_STEPS = [1, 2, 3, 5, 10, 20, 25, 40, 50];
 
@@ -87,8 +89,10 @@ export default function OrderTicket() {
   };
 
   // The button always says exactly why it can't be pressed.
+  const stressRunning = useStress((s) => s.running);
   let blocker: string | null = null;
-  if (!perp) blocker = `${coin} isn't listed on ${network}`;
+  if (stressRunning) blocker = 'Stress test running: prices are synthetic';
+  else if (!perp) blocker = `${coin} isn't listed on ${network}`;
   else if (network === 'mainnet') blocker = 'Trading is on testnet';
   else if (!owner) blocker = 'Create a wallet to trade';
   else if (agentStatus !== 'approved') blocker = 'Enable trading in Account';
@@ -103,18 +107,21 @@ export default function OrderTicket() {
       const outcome = await submitTicket({ ...ticket, referencePx: mid, isCross }, perp, network);
       track('order_result', { coin, status: outcome.status });
       setResult({ ok: true, outcome });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic('success');
     } catch (e) {
       track('order_result', { coin, status: 'rejected' });
       setResult({ ok: false, message: messageOf(e) });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptic('error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const pct = (f: number) => {
-    if (withdrawable) setAmount(String(Math.floor(withdrawable * leverage * f * 100) / 100));
+  // Buying power: available margin times leverage. The slider sets the amount as a share of it.
+  const buyingPower = withdrawable ? withdrawable * leverage : 0;
+  const sizeFraction = buyingPower > 0 ? Math.min(1, notional / buyingPower) : 0;
+  const setFraction = (f: number) => {
+    if (buyingPower > 0) setAmount(String(Math.floor(buyingPower * f * 100) / 100));
   };
 
   return (
@@ -150,14 +157,19 @@ export default function OrderTicket() {
         <Field label="Limit price" value={limitPx} onChange={setLimitPx} suffix="USD" right={mid ? { label: 'Mid', onPress: () => setLimitPx(formatPrice(mid).replace(/,/g, '')) } : undefined} />
       ) : null}
       <Field label="Amount" value={amount} onChange={setAmount} suffix="USD" testID="amount-input" />
-      <View style={styles.pcts}>
-        {[0.25, 0.5, 0.75, 1].map((f) => (
-          <Pressable key={f} onPress={() => pct(f)} style={styles.pct} disabled={!withdrawable}>
-            <Text variant="label" tone={withdrawable ? 'muted' : 'faint'}>
-              {f * 100}%
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.sizeRow}>
+        <Slider
+          testID="size-slider"
+          value={sizeFraction}
+          onChange={setFraction}
+          color={side === 'long' ? colors.up : colors.down}
+          disabled={buyingPower <= 0}
+        />
+        <Text variant="caption" tone="faint">
+          {buyingPower > 0
+            ? `${Math.round(sizeFraction * 100)}% of ${formatUsd(buyingPower, 0)} buying power`
+            : 'Fund the wallet to size by buying power'}
+        </Text>
       </View>
       {kind === 'twap' ? <Field label="Run for" value={minutes} onChange={setMinutes} suffix="min" /> : null}
 
@@ -286,7 +298,7 @@ function Stepper({ value, max, onChange }: { value: number; max: number; onChang
   const go = (d: number) => {
     const next = steps[Math.min(steps.length - 1, Math.max(0, i + d))];
     if (next !== value) {
-      Haptics.selectionAsync();
+      haptic('detent');
       onChange(next);
     }
   };
@@ -309,8 +321,7 @@ const styles = StyleSheet.create({
   field: { backgroundColor: colors.surface, borderRadius: radius.control, paddingHorizontal: space.md, paddingVertical: space.sm },
   fieldRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   fieldInput: { flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 20, paddingVertical: 4, fontVariant: ['tabular-nums'] },
-  pcts: { flexDirection: 'row', gap: space.sm },
-  pct: { flex: 1, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radius.control, backgroundColor: colors.surface },
+  sizeRow: { gap: 2 },
   levRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   levControls: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   modeChip: { paddingHorizontal: space.md, height: 32, justifyContent: 'center', borderRadius: radius.control, backgroundColor: colors.surface },

@@ -1,8 +1,8 @@
 import { useLoginWithEmail, usePrivy } from '@privy-io/expo';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBackend } from '@/backend/session';
@@ -18,8 +18,12 @@ import { useAccount } from '@/wallet/account';
 import { useWallet } from '@/wallet/store';
 import { enableTrading, useTrading } from '@/wallet/trading';
 import { createDeviceWallet, privyEnabled, removeDeviceWallet } from '@/wallet/WalletProvider';
+import { haptic, useHapticsSetting } from '@/ui/haptics';
 
 export default function AccountScreen() {
+  // Native tabs mount every screen up front. The diagnostics probes run a JS frame loop and a
+  // UI-thread frame callback, so they exist only while this tab is on screen.
+  const focused = useIsFocused();
   const owner = useWallet((s) => s.owner);
   const privyPending = useWallet((s) => s.privyPending);
   const network = useConnection((s) => s.network);
@@ -46,7 +50,8 @@ export default function AccountScreen() {
 
         {owner ? <WalletCard /> : privyPending ? <Card title="Wallet"><Text tone="muted">Creating your wallet…</Text></Card> : <CreateWallet />}
         {owner ? <TradingCard /> : null}
-        <Diagnostics />
+        <PreferencesCard />
+        {focused ? <Diagnostics /> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -69,7 +74,7 @@ function CreateWallet() {
         onPress={async () => {
           setBusy(true);
           await createDeviceWallet().finally(() => setBusy(false));
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptic('success');
         }}
       />
     </Card>
@@ -128,7 +133,7 @@ function WalletCard() {
 
   const copy = async () => {
     await Clipboard.setStringAsync(owner.address);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptic('success');
   };
 
   return (
@@ -236,7 +241,28 @@ function TradingCard() {
   );
 }
 
+function PreferencesCard() {
+  const enabled = useHapticsSetting((s) => s.enabled);
+  return (
+    <Card title="Preferences">
+      <View style={styles.prefRow}>
+        <Text>Haptics</Text>
+        <Switch
+          testID="haptics-switch"
+          value={enabled}
+          onValueChange={(v) => {
+            useHapticsSetting.setState({ enabled: v });
+            if (v) haptic('toggleOn');
+          }}
+          trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+        />
+      </View>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  prefRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: space.lg, gap: space.lg, paddingBottom: 120 },
   login: { gap: space.sm },

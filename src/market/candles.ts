@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { onNextFrame } from './batcher';
 import { getClients, useConnection } from './clients';
 import { countMessage, reportFeedError } from './diagnostics';
+import { withRetry } from './retry';
 
 export const INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const;
 export type Interval = (typeof INTERVALS)[number];
@@ -37,28 +38,49 @@ export function upsertCandle(candles: Candle[], next: Candle, max = CANDLE_COUNT
   return candles;
 }
 
-/** History over HTTP, then the forming candle over the shared socket. */
+// Candle history costs 20+ request weight per load against a per-IP budget of 1200 a minute,
+// so recent history is reused for a minute: reopening a market or flipping back to an interval
+// costs nothing. The live candle stream keeps the cached copy current.
+const HISTORY_TTL_MS = 60_000;
+const history = new Map<string, { candles: Candle[]; at: number }>();
+
+/** History over HTTP (or from the one-minute cache), then the forming candle over the shared socket. */
 export function useCandles(coin: string, interval: Interval) {
   const network = useConnection((s) => s.network);
+  const epoch = useConnection((s) => s.epoch);
 
   useEffect(() => {
     const key = `${network}:${coin}:${interval}`;
-    useCandleStore.setState({ key, candles: [], loading: true });
+    const cached = history.get(key);
+    const fresh = cached && Date.now() - cached.at < HISTORY_TTL_MS;
+    useCandleStore.setState({ key, candles: cached?.candles ?? [], loading: !fresh });
     const { info, subs } = getClients(network);
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
     const endTime = Date.now();
-    info
-      .candleSnapshot({ coin, interval, startTime: endTime - INTERVAL_MS[interval] * CANDLE_COUNT, endTime })
-      .then((history) => {
+    const load = fresh
+      ? Promise.resolve()
+      : withRetry(() =>
+          info.candleSnapshot({ coin, interval, startTime: endTime - INTERVAL_MS[interval] * CANDLE_COUNT, endTime }),
+        ).then((rows) => {
+          if (cancelled) return;
+          const candles = rows.map(parse);
+          history.set(key, { candles, at: Date.now() });
+          useCandleStore.setState({ candles, loading: false });
+        });
+
+    load
+      .then(() => {
         if (cancelled) return;
-        useCandleStore.setState({ candles: history.map(parse), loading: false });
         return subs.candle({ coin, interval }, (event) => {
           countMessage('candle');
           onNextFrame(`candle:${key}`, () => {
             if (useCandleStore.getState().key !== key) return;
-            useCandleStore.setState((s) => ({ candles: upsertCandle(s.candles, parse(event)) }));
+            const candles = upsertCandle(useCandleStore.getState().candles, parse(event));
+            const entry = history.get(key);
+            if (entry) entry.candles = candles;
+            useCandleStore.setState({ candles });
           });
         });
       })
@@ -76,5 +98,5 @@ export function useCandles(coin: string, interval: Interval) {
       cancelled = true;
       unsubscribe?.();
     };
-  }, [coin, interval, network]);
+  }, [coin, interval, network, epoch]);
 }

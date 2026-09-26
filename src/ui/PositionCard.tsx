@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -12,11 +11,14 @@ import { messageOf, useTrading } from '@/wallet/trading';
 import { Button } from './Button';
 import { Text } from './Text';
 import { colors, radius, space } from './theme';
+import { haptic } from './haptics';
 
 /** A live position. PnL, ROE and liquidation price are the exchange's numbers, not ours. */
 export function PositionRow({ position: p }: { position: Position }) {
   const perp = useMarkets((s) => s.perpByCoin[p.coin]);
-  const mark = useMarkets((s) => s.ctxByCoin[p.coin]?.markPx);
+  // The exchange values the position at its mark price: positionValue / size. Using it means the
+  // portfolio doesn't need the all-markets stream, and it matches the exchange's own PnL.
+  const mark = p.szi !== 0 ? p.positionValue / Math.abs(p.szi) : undefined;
   const network = useConnection((s) => s.network);
   const canTrade = useTrading((s) => s.status === 'approved');
   const [closing, setClosing] = useState(false);
@@ -30,7 +32,7 @@ export function PositionRow({ position: p }: { position: Position }) {
     setError(null);
     try {
       await closePosition(p, perp, mark, network);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic('success');
     } catch (e) {
       setError(messageOf(e));
     } finally {

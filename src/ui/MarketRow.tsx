@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { memo, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useMarkets } from '@/market/markets';
 import { formatPct, formatPrice, formatUsdCompact } from '@/trading/format';
 
+import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 import { colors, radius, space } from './theme';
 
@@ -21,15 +22,16 @@ export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
 
   const flash = useSharedValue(0); // 1 = flashed up, -1 = flashed down, 0 = rest
   const lastPx = useRef<number | undefined>(undefined);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const px = ctx?.markPx;
-    if (px !== undefined && lastPx.current !== undefined && px !== lastPx.current) {
-      flash.value = px > lastPx.current ? 1 : -1;
-      flash.value = withTiming(0, { duration: 700 });
+    if (!reduceMotion && px !== undefined && lastPx.current !== undefined && px !== lastPx.current) {
+      flash.set(px > lastPx.current ? 1 : -1);
+      flash.set(withTiming(0, { duration: 700 }));
     }
     lastPx.current = px;
-  }, [ctx?.markPx, flash]);
+  }, [ctx?.markPx, flash, reduceMotion]);
 
   const flashStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(flash.value, [-1, 0, 1], [colors.downFaint, 'transparent', colors.upFaint]),
@@ -40,12 +42,13 @@ export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
   const up = (change ?? 0) >= 0;
 
   return (
-    <Pressable
+    <PressableScale
+      scaleTo={0.985}
       testID={`market-row-${coin}`}
       accessibilityRole="button"
       accessibilityLabel={`${coin} ${ctx ? formatPrice(ctx.markPx) : ''}`}
       onPress={() => router.push({ pathname: '/market/[coin]', params: { coin } })}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surface }]}>
+      style={styles.row}>
       <View style={styles.left}>
         <View style={styles.nameLine}>
           <Text variant="heading">{coin}</Text>
@@ -67,7 +70,7 @@ export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
           {change === null ? '—' : formatPct(change)}
         </Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 });
 

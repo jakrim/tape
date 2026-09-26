@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect } from 'react';
 import { create } from 'zustand';
 
 import { onNextFrame } from './batcher';
-import { getClients, reconnect, useConnection, type Network } from './clients';
+import { getClients, useConnection, type Network } from './clients';
 import { countMessage, reportFeedError } from './diagnostics';
+import { withRetry } from './retry';
 
 export type Perp = {
   coin: string;
@@ -24,7 +25,7 @@ export type AssetCtx = {
   oraclePx: number;
 };
 
-type RawCtx = {
+export type RawCtx = {
   markPx: string;
   midPx: string | null;
   prevDayPx: string;
@@ -79,9 +80,9 @@ function sameCtx(a: AssetCtx, b: AssetCtx) {
 /**
  * Merges a full asset-context snapshot into the store. A coin keeps its previous object when
  * nothing changed, so list rows (which select their own coin) re-render only when their
- * numbers move. 178 markets update every few seconds; typically only a fraction changed.
+ * numbers move.
  */
-function applyCtxs(raw: RawCtx[]) {
+export function applyCtxs(raw: RawCtx[]) {
   const { universe, ctxByCoin } = useMarkets.getState();
   const next: Record<string, AssetCtx> = {};
   for (let i = 0; i < raw.length && i < universe.length; i++) {
@@ -95,7 +96,7 @@ function applyCtxs(raw: RawCtx[]) {
 
 async function loadSnapshot(network: Network) {
   const { info } = getClients(network);
-  const [meta, ctxs] = await info.metaAndAssetCtxs();
+  const [meta, ctxs] = await withRetry(() => info.metaAndAssetCtxs());
   const universe = meta.universe.map((u) => u.name);
   const perps: Perp[] = meta.universe
     .map((u, index) => ({
@@ -111,56 +112,76 @@ async function loadSnapshot(network: Network) {
     .sort((a, b) => b.volume - a.volume)
     .map(({ delisted, volume, ...perp }) => perp);
   const perpByCoin = Object.fromEntries(perps.map((p) => [p.coin, p]));
-  useMarkets.setState({ universe, perps, perpByCoin });
+  useMarkets.setState({ universe, perps, perpByCoin, error: null });
   applyCtxs(ctxs);
 }
 
 /**
- * Keeps every market's price, funding and volume live while the app is open.
- * Mounted once at the root. Loads a snapshot over HTTP first so the list paints immediately,
- * then streams updates over the shared socket.
+ * Loads the market list once per network (and after returning from the background). Mounted
+ * at the root because every screen needs the market metadata: asset ids, size decimals,
+ * max leverage.
  */
+/** Pull-to-refresh: a fresh snapshot now, without waiting for the next stream message. */
+export function refreshMarkets(): Promise<void> {
+  return loadSnapshot(useConnection.getState().network).catch((e) => reportFeedError('markets', e));
+}
+
+let loadedNetwork: Network | null = null;
+
 export function useMarketsFeed() {
   const network = useConnection((s) => s.network);
+  const epoch = useConnection((s) => s.epoch);
   const attempt = useMarkets((s) => s.attempt);
 
   useEffect(() => {
     let cancelled = false;
-    let unsubscribe: (() => void) | undefined;
-    useMarkets.setState(empty);
-
-    loadSnapshot(network)
-      .then(() => {
-        if (cancelled) return;
-        return getClients(network).subs.assetCtxs((event) => {
-          countMessage('markets');
-          onNextFrame('markets', () => applyCtxs(event.ctxs));
-        });
-      })
-      .then((sub) => {
-        if (!sub) return;
-        if (cancelled) sub.unsubscribe().catch(() => {});
-        else unsubscribe = () => sub.unsubscribe().catch(() => {});
-      })
-      .catch((error) => {
-        reportFeedError('markets', error);
-        if (!cancelled) useMarkets.setState({ error: 'Could not load markets' });
-      });
-
+    // Asset ids differ per network (BTC is 0 on mainnet, 3 on testnet), so a network change must
+    // clear the old universe before anything can use it. Returning from the background keeps it.
+    if (loadedNetwork !== network) {
+      useMarkets.setState(empty);
+      loadedNetwork = network;
+    }
+    loadSnapshot(network).catch((error) => {
+      reportFeedError('markets', error);
+      if (!cancelled) useMarkets.setState({ error: 'Could not load markets' });
+    });
     return () => {
       cancelled = true;
-      unsubscribe?.();
     };
-  }, [network, attempt]);
+  }, [network, epoch, attempt]);
+}
 
-  // Returning from the background: the OS may have killed the socket without a close event.
-  // Reconnecting forces fresh snapshots, and the freshness checks keep the UI honest meanwhile.
-  useEffect(() => {
-    let backgroundedAt = 0;
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background') backgroundedAt = Date.now();
-      if (state === 'active' && backgroundedAt && Date.now() - backgroundedAt > 5_000) reconnect(network);
-    });
-    return () => sub.remove();
-  }, [network]);
+// The all-markets stream is about 54 KB every 4 s (roughly 43 MB an hour on mobile data), so it
+// runs only while a screen that shows every market is focused.
+const REFRESH_IF_OLDER_THAN = 12_000;
+
+/** Live prices for every market, while the calling screen is focused. */
+export function useLiveMarkets() {
+  const network = useConnection((s) => s.network);
+  const epoch = useConnection((s) => s.epoch);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      let unsubscribe: (() => void) | undefined;
+      const { updatedAt } = useMarkets.getState();
+      if (updatedAt !== null && Date.now() - updatedAt > REFRESH_IF_OLDER_THAN) {
+        loadSnapshot(network).catch((e) => reportFeedError('markets', e));
+      }
+      getClients(network)
+        .subs.assetCtxs((event) => {
+          countMessage('markets');
+          onNextFrame('markets', () => applyCtxs(event.ctxs));
+        })
+        .then((sub) => {
+          if (cancelled) sub.unsubscribe().catch(() => {});
+          else unsubscribe = () => sub.unsubscribe().catch(() => {});
+        })
+        .catch((e) => reportFeedError('markets', e));
+      return () => {
+        cancelled = true;
+        unsubscribe?.();
+      };
+    }, [network, epoch]),
+  );
 }

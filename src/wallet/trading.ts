@@ -3,7 +3,7 @@ import type { PrivateKeyAccount } from 'viem/accounts';
 import { create } from 'zustand';
 
 import { track } from '@/lib/analytics';
-import { getClients, type Network } from '@/market/clients';
+import { getClients, requestTransport, type Network } from '@/market/clients';
 
 import { createKey, keyNames, loadKey } from './keys';
 import type { Owner } from './store';
@@ -30,7 +30,7 @@ export const useTrading = create<TradingState>(() => ({ status: 'checking', agen
 function ownerExchange(owner: Owner, network: Network) {
   return new ExchangeClient({
     wallet: owner.signer,
-    transport: getClients(network).http,
+    transport: requestTransport(network),
     signatureChainId: SIGNATURE_CHAIN_ID[network],
   });
 }
@@ -38,7 +38,9 @@ function ownerExchange(owner: Owner, network: Network) {
 export function agentExchange(network: Network): ExchangeClient {
   const { agent } = useTrading.getState();
   if (!agent) throw new Error('Trading is not enabled');
-  return new ExchangeClient({ wallet: agent, transport: getClients(network).http });
+  // Orders go over the already-open socket when it's live: no TCP/TLS setup per order, which is
+  // most of the latency of a fresh HTTPS request on mobile. HTTP is the fallback while reconnecting.
+  return new ExchangeClient({ wallet: agent, transport: requestTransport(network) });
 }
 
 /** Asks the exchange (not local state) whether this device's key is an approved agent. */

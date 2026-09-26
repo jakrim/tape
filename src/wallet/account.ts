@@ -6,6 +6,9 @@ import { onNextFrame } from '@/market/batcher';
 import { getClients, useConnection } from '@/market/clients';
 import { countMessage, reportFeedError } from '@/market/diagnostics';
 
+import { formatPrice, formatUsd } from '@/trading/format';
+import { showToast } from '@/ui/Toast';
+
 import { useWallet } from './store';
 
 export type Position = {
@@ -33,26 +36,56 @@ export type OpenOrder = {
   timestamp: number;
 };
 
+export type Fill = {
+  id: number;
+  coin: string;
+  side: 'buy' | 'sell';
+  px: number;
+  sz: number;
+  dir: string; // e.g. "Open Long", "Close Short"
+  closedPnl: number;
+  time: number;
+};
+
 type AccountState = {
   accountValue: number | null;
   withdrawable: number | null;
   marginUsed: number | null;
   positions: Position[];
   orders: OpenOrder[];
+  fills: Fill[]; // newest first
   updatedAt: number | null;
 };
 
-const empty: AccountState = { accountValue: null, withdrawable: null, marginUsed: null, positions: [], orders: [], updatedAt: null };
+const empty: AccountState = { accountValue: null, withdrawable: null, marginUsed: null, positions: [], orders: [], fills: [], updatedAt: null };
+const MAX_FILLS = 20;
 
 export const useAccount = create<AccountState>(() => empty);
 
-/** Streams the owner's margin, positions and open orders from the exchange. Mounted once at the root. */
+let accountKey = '';
+
+function announceFill(f: Fill) {
+  const pnl = f.closedPnl !== 0 ? ` · realized ${formatUsd(f.closedPnl)}` : '';
+  showToast({
+    title: `Filled ${f.sz} ${f.coin}`,
+    body: `${f.dir} at ${formatPrice(f.px)}${pnl}`,
+    tone: 'up', // a fill always succeeded, even one that realizes a loss
+  });
+}
+
+/** Streams the owner's margin, positions, open orders and fills from the exchange. Mounted once at the root. */
 export function useAccountFeed() {
   const network = useConnection((s) => s.network);
+  const epoch = useConnection((s) => s.epoch);
   const user = useWallet((s) => s.owner?.address);
 
   useEffect(() => {
-    useAccount.setState(empty);
+    // A different wallet or network starts clean; a new socket for the same one keeps the last values.
+    const key = `${network}:${user ?? ''}`;
+    if (key !== accountKey) {
+      useAccount.setState(empty);
+      accountKey = key;
+    }
     if (!user) return;
     const { subs } = getClients(network);
     let cancelled = false;
@@ -115,9 +148,37 @@ export function useAccountFeed() {
       }),
     );
 
+    // Fills arrive the moment the exchange matches an order, including a resting limit order that
+    // fills minutes later. The first message is a snapshot of recent history: listed, not announced.
+    track(
+      'fills',
+      subs.userFills({ user }, (event) => {
+        countMessage('user');
+        const incoming: Fill[] = event.fills.map((f) => ({
+          id: f.tid,
+          coin: f.coin,
+          side: f.side === 'B' ? 'buy' : 'sell',
+          px: Number(f.px),
+          sz: Number(f.sz),
+          dir: f.dir,
+          closedPnl: Number(f.closedPnl),
+          time: f.time,
+        }));
+        if (!event.isSnapshot) incoming.forEach(announceFill);
+        onNextFrame('fills', () => {
+          useAccount.setState((s) => {
+            const seen = new Set(s.fills.map((f) => f.id));
+            const fresh = incoming.filter((f) => !seen.has(f.id));
+            if (fresh.length === 0) return s;
+            return { fills: [...fresh, ...s.fills].sort((a, b) => b.time - a.time).slice(0, MAX_FILLS) };
+          });
+        });
+      }),
+    );
+
     return () => {
       cancelled = true;
       handles.forEach((h) => h.unsubscribe().catch(() => {}));
     };
-  }, [network, user]);
+  }, [network, user, epoch]);
 }

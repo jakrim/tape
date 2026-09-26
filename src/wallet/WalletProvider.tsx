@@ -1,5 +1,5 @@
 import { PrivyProvider, useEmbeddedEthereumWallet, useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createWalletClient, custom } from 'viem';
 import type { PrivateKeyAccount } from 'viem/accounts';
 
@@ -114,11 +114,15 @@ function WalletEffects() {
   }, [owner, network]);
 
   // Sign in to the backend with the wallet itself (SIWE), then load the saved watchlist.
+  // Sign out only when a wallet is removed. At launch the owner is briefly null while the key
+  // loads, and signing out then would throw away the saved session every time.
+  const hadOwner = useRef(false);
   useEffect(() => {
     if (!owner) {
-      signOutOfBackend();
+      if (hadOwner.current) signOutOfBackend();
       return;
     }
+    hadOwner.current = true;
     signInWithWallet(owner).then(() => {
       if (useBackend.getState().status === 'signed-in') syncFavorites();
     });

@@ -1,0 +1,26 @@
+# Burst test: ~175 synthetic updates/s through the live data path on the BTC screen for 15 s,
+# labeled on screen, then results. Run on a real mid-range Android phone for the 60 fps claim.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- tapOn: "Account"
+- scrollUntilVisible:
+    element:
+      id: "run-stress-test"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "run-stress-test"
+- extendedWaitUntil:
+    visible:
+      id: "order-book"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: ".*Stress test · synthetic data.*"
+    timeout: 10000
+# No screenshots while it runs: capturing the simulator screen pauses its display link,
+# which would show up as dropped frames that have nothing to do with the app.
+- extendedWaitUntil:
+    visible: ".*Stress test done.*"
+    timeout: 30000
+- takeScreenshot: stress-done
