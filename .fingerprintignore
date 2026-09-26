@@ -1,0 +1,4 @@
+# React Native's Gradle tooling strips the `package` attribute from this library manifest in place
+# during local Android builds. EAS fingerprints a clean install, so without this line the local and
+# cloud runtime versions disagree and the EAS build fails.
+node_modules/@react-native-masked-view/masked-view/android/src/main/AndroidManifest.xml
