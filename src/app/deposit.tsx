@@ -19,21 +19,19 @@ export default function DepositSheet() {
   const owner = useWallet((s) => s.owner);
   const [source, setSource] = useState<Source>(SOURCES[0]);
   const [amount, setAmount] = useState('100');
-  const [quote, setQuote] = useState<DepositQuote | null>(null);
+  const [lastQuote, setQuote] = useState<DepositQuote | null>(null);
   const [quotedAt, setQuotedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const age = useAgeSeconds(quotedAt);
 
   const amountUsdc = Number(amount);
+  const quote = amountUsdc > 0 ? lastQuote : null;
   const address = owner?.address ?? PREVIEW_ADDRESS;
 
   // Debounced quote on input change, then refreshed every 15 s because route quotes go stale.
   useEffect(() => {
-    if (!(amountUsdc > 0)) {
-      setQuote(null);
-      return;
-    }
+    if (!(amountUsdc > 0)) return;
     const controller = new AbortController();
     const load = () => {
       setLoading(true);

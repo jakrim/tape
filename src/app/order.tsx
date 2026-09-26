@@ -232,7 +232,7 @@ export default function OrderTicket() {
         />
       ) : null}
       <Text variant="caption" tone="faint">
-        Liquidation and fees are estimates at the base fee tier. Positions show the exchange's own numbers once opened.
+        Liquidation and fees are estimates at the base fee tier. Positions show the exchange’s own numbers once opened.
       </Text>
     </ScrollView>
   );

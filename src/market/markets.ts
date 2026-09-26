@@ -182,6 +182,7 @@ export function useLiveMarkets() {
         cancelled = true;
         unsubscribe?.();
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- a new epoch must resubscribe
     }, [network, epoch]),
   );
 }

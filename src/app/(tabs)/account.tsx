@@ -155,7 +155,7 @@ function WalletCard() {
         <View style={styles.notice}>
           <Text variant="bodyStrong">Fund this wallet with test USDC</Text>
           <Text tone="muted">
-            Hyperliquid's faucet only pays wallets that have deposited on mainnet. Claim 1,000 test USDC at
+            Hyperliquid’s faucet only pays wallets that have deposited on mainnet. Claim 1,000 test USDC at
             app.hyperliquid-testnet.xyz/drip with that wallet, then send it to the address above.
           </Text>
         </View>
@@ -222,7 +222,7 @@ function TradingCard() {
         <>
           <Text tone="muted">
             Approve a trading key stored on this device. Your wallet signs once; after that orders go out instantly
-            with no prompts. The key can trade but can't withdraw.
+            with no prompts. The key can trade but can’t withdraw.
           </Text>
           {network === 'mainnet' ? (
             <Text variant="caption" tone="warning">Switch to testnet to enable trading.</Text>

@@ -41,6 +41,12 @@
       "environment": "preview",
       "channel": "preview"
     },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
       "extends": "base",
       "autoIncrement": true,
@@ -50,6 +56,12 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleTeamId": "A33AS9XAQT",
+        "appName": "Tape Perps",
+        "sku": "tape-ios",
+        "language": "en-US"
+      },
       "android": {
         "track": "internal",
         "releaseStatus": "draft"

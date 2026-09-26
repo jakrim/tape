@@ -38,6 +38,9 @@ yarn-error.*
 
 example
 
+# Maestro takeScreenshot output
+/*.png
+
 # generated native folders
 /ios
 /android

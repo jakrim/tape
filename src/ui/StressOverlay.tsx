@@ -16,17 +16,16 @@ import { usePerfSampler } from './usePerfSampler';
 export function StressOverlay() {
   const running = useStress((s) => s.running);
   const results = useStress((s) => s.results);
-  const [showResults, setShowResults] = useState(false);
+  const [hidden, setHidden] = useState<typeof results>(null);
 
   useEffect(() => {
     if (!results) return;
-    setShowResults(true);
-    const t = setTimeout(() => setShowResults(false), 8_000);
+    const t = setTimeout(() => setHidden(results), 8_000);
     return () => clearTimeout(t);
   }, [results]);
 
   if (running) return <RunningBanner />;
-  if (showResults && results) {
+  if (results && results !== hidden) {
     return (
       <Banner tone="done">
         <Text variant="label">Stress test done · {results.messages.toLocaleString()} synthetic messages</Text>

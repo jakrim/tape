@@ -19,7 +19,7 @@ flowchart LR
 3. **Fingerprint.** `runtimeVersion` uses Expo's fingerprint policy, a hash of everything native.
 4. **Choose the path per platform.** If a store build with the same fingerprint exists, the week's changes are JavaScript only and ship as an over-the-air update in minutes, with no store review. If not, the workflow builds a new binary and submits it: TestFlight on iOS, the internal track as a draft on Android.
 
-Every pull request runs `.eas/workflows/pr-checks.yml`: typecheck, unit tests, and the fingerprint, which shows whether merging will need a new binary.
+Every pull request runs `.eas/workflows/pr-checks.yml`: typecheck, lint, unit tests, and the fingerprint, which shows whether merging will need a new binary.
 
 To roll back an over-the-air update, republish the previous update group to the `production` branch. Binaries that ran the bad update pick up the previous one on next launch.
 

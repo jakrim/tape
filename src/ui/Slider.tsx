@@ -38,19 +38,19 @@ export function Slider({ value, onChange, color = colors.accent, disabled, testI
     if (width.value <= 0) return;
     let f = Math.min(1, Math.max(0, x / width.value));
     for (const d of DETENTS) if (Math.abs(f - d) < SNAP) f = d;
-    fraction.value = f;
+    fraction.set(f);
   };
 
   const pan = Gesture.Pan()
     .enabled(!disabled)
     .minDistance(0)
     .onBegin((e) => {
-      dragging.value = true;
+      dragging.set(true);
       setFromX(e.x);
     })
     .onUpdate((e) => setFromX(e.x))
     .onFinalize(() => {
-      dragging.value = false;
+      dragging.set(false);
     });
 
   // Report whole percents to JS, and tick when the thumb lands on a detent.
