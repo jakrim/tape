@@ -28,8 +28,14 @@ To roll back an over-the-air update, republish the previous update group to the 
 The workflows are written and the EAS project exists (`@jakrim/tape`), but they have not run yet. They need:
 
 - The GitHub repository connected to the EAS project, so scheduled and PR runs trigger.
-- App Store Connect and Google Play credentials in EAS for submission, and store records for the app.
+- Google Play credentials in EAS and a Play Console record for the app. The iOS side is set up: the App Store Connect record exists and EAS Submit has an API key.
 - A Sentry auth token if source maps should upload (disabled until then via `SENTRY_DISABLE_AUTO_UPLOAD`).
+
+## Builds for reviewers
+
+- **iPhone:** the `production` profile built with `--auto-submit` goes to TestFlight. An external group with a public link serves it once Apple's beta review approves the build.
+- **Android:** the `preview` profile builds an APK for EAS internal distribution. EAS expires these builds after 14 days, so the APK is also attached to a GitHub Release.
+- **iOS Simulator:** the `preview-simulator` profile, for reviewers with Xcode. Also attached to the release.
 
 ## How I work
 
