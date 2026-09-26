@@ -10,6 +10,10 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 | `src/market/` | The live-data layer: socket clients, frame batcher, stores, freshness rules, diagnostics counters. |
 | `src/trading/` | Pure trading math and formatting (tested with `node --test`), plus order submission. |
 | `src/wallet/` | Owner wallet (Privy or device key), trading key approval, account feed. |
+| `src/backend/` | Supabase client and Sign in with Ethereum. |
+| `src/deposit/` | Cross-chain deposit quotes from Relay (read only). |
+| `src/lib/` | Monitoring (Sentry) and analytics (PostHog). |
+| `supabase/` | Migrations, pgTAP tests and auth config for the backend. |
 | `src/ui/` | Design tokens (`theme.ts`) and components. Every color and size comes from `theme.ts`. |
 | `.maestro/` | End-to-end flows, also run by the weekly release workflow. |
 | `.eas/workflows/` | PR checks and the weekly release pipeline. |
@@ -85,17 +89,40 @@ Prices and sizes are rounded by `toWirePrice` and `toWireSize`, which follow the
 
 **What the UI trusts.** Before an order, the ticket shows estimates: margin, fee at the base tier, and liquidation price from the documented formula. After an order, the app shows only what the exchange returned: the order outcome, and positions from the `clearinghouseState` stream including the exchange's own `liquidationPx` and PnL. Exchange errors are shown verbatim.
 
+## Backend
+
+Supabase holds user data only: today, the watchlist. Market data never passes through it.
+
+- **Sign in with Ethereum.** When a wallet connects, the app builds an EIP-4361 message with viem (`createSiweMessage`), the owner wallet signs it, and `supabase.auth.signInWithWeb3` verifies it and returns a session. The message's domain (`tape.local`) must match an allowed redirect URL in `supabase/config.toml`. No session is stored on the device; the wallet signs again at launch, which is silent for both wallet types.
+- **Row-level security.** `watchlist` rows belong to `auth.uid()`. Users can read, add and remove only their own rows. `supabase/tests/watchlist_rls.test.sql` checks that another wallet can't read them or write as their owner, and that anonymous callers see nothing.
+- **Watchlist sync.** Favorites change locally first, then write to Supabase; a failed write rolls the change back. Optimistic updates are acceptable for a watchlist and are never used for orders.
+
+## Deposit quotes
+
+`src/deposit/relay.ts` asks Relay for a route from USDC on Base, Arbitrum or Ethereum into the user's Hyperliquid perps balance (Relay chain 1337). The sheet shows what arrives, the relayer and gas fees, the time estimate and the wallet steps, and refreshes the quote every 15 s with its age shown. Relay's response also contains ready-to-sign mainnet transactions; Tape never sends them.
+
+## Monitoring, analytics and updates
+
+- Sentry wraps the root layout, and every feed error is reported with its stream name. Off unless `EXPO_PUBLIC_SENTRY_DSN` is set.
+- PostHog events come from a typed list in `src/lib/analytics.ts`. No event carries a wallet address, key, balance or order size. Off unless `EXPO_PUBLIC_POSTHOG_KEY` is set.
+- `expo-updates` with `runtimeVersion: { policy: "fingerprint" }`, so an over-the-air update only reaches builds with a matching native layer.
+
 ## Testing
 
-- `npm test` runs `node --test` over `src/**/*.test.ts`: tick and lot rounding, liquidation estimates, ticket validation, formatting.
+- `npm test` runs `node --test` over `src/**/*.test.ts`: tick and lot rounding, liquidation estimates, ticket validation, formatting, and the Relay quote parser against a recorded response.
+- `npx supabase@latest test db` runs the pgTAP row-level security tests.
 - `npm run typecheck` runs `tsc` in strict mode.
-- Maestro flows in `.maestro/`: markets to trade screen, order ticket blocking rules, wallet creation and trading approval against testnet.
+- Maestro flows in `.maestro/`: markets to trade screen, order ticket blocking rules, wallet creation and trading approval against testnet, deposit quote.
 
 ## Build and release
 
 - `eas.json` profiles: `development`, `development-simulator`, `e2e` (simulator build and Android APK for Maestro), `preview`, `production`.
 - `.eas/workflows/pr-checks.yml`: typecheck, unit tests and native fingerprint on every PR.
 - `.eas/workflows/weekly-release.yml`: every Tuesday 14:00 GMT. Gates on tests and Maestro, then fingerprints the native layer. If a store build with the same fingerprint exists it ships an over-the-air update; otherwise it builds and submits to TestFlight and the Play internal track.
+
+## Known issue: React Compiler and imported counters
+
+React Compiler 1.0 compiled `counters.book++` inside a hook, where `counters` is an imported object, into `counters.book = module.book + 1`, which is NaN. The diagnostics panel showed NaN, and the compiled bundle confirmed it. Every counter now goes through `countMessage()` in `src/market/diagnostics.ts`, a plain function the compiler does not transform. Avoid mutating imported objects inside components and hooks.
 
 ## Dependency notes
 

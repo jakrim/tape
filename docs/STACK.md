@@ -53,6 +53,11 @@ Each choice lists why it was made, what else was considered, and where I have sh
 - **Considered.** A Hono API like LiveVault's. More code to own for the same result at this size.
 - **Prior work.** Our Little World runs on Supabase with 205 RLS policies and pgTAP tests.
 
+## Cross-chain deposits: Relay quotes
+
+- **Why.** Relay routes USDC from Base, Arbitrum and Ethereum directly into a Hyperliquid perps balance (all three quoted live on 2026-09-25: 100 USDC in, about 98.8 out, about 1 s, two wallet steps). One call returns the amount received, fees, time and steps. Tape shows the quote and never sends the transactions.
+- **Considered.** LI.FI, and Hyperliquid's own bridge, which only accepts USDC already on Arbitrum.
+
 ## Styling: StyleSheet and one tokens file
 
 - **Why.** No runtime styling cost, and every color, radius and type style lives in `src/ui/theme.ts`. Prices use tabular figures so digits do not shift as they change. Moving to a team's design system is a change to that file.

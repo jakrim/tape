@@ -1,0 +1,17 @@
+# Regression: after switching sort (Gainers, then Volume) the first row rendered blank.
+# Cause: FlashList v2 keeps visible content anchored by default; disabled for this list.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "market-row-BTC"
+    timeout: 20000
+- tapOn: "Gainers"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Volume"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    id: "market-row-BTC"

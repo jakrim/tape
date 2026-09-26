@@ -86,6 +86,10 @@ export default function MarketsScreen() {
         </View>
       ) : (
         <FlashList
+          // A sort change reorders every row. Recycled cells from the previous order left the first
+          // slot blank after scrolling, so each sort gets a fresh list, which also starts at the top.
+          key={sort}
+          maintainVisibleContentPosition={{ disabled: true }}
           testID="market-list"
           data={coins}
           keyExtractor={(c) => c}
