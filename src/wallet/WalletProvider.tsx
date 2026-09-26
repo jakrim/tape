@@ -4,6 +4,7 @@ import { createWalletClient, custom } from 'viem';
 import type { PrivateKeyAccount } from 'viem/accounts';
 
 import { signInWithWallet, signOutOfBackend, useBackend } from '@/backend/session';
+import { track } from '@/lib/analytics';
 import { useConnection } from '@/market/clients';
 import { syncFavorites } from '@/market/favorites';
 
@@ -139,6 +140,7 @@ function deviceOwner(account: PrivateKeyAccount): Owner {
 export async function createDeviceWallet() {
   const account = await createKey(keyNames.deviceOwner);
   useWallet.getState().setOwner(deviceOwner(account));
+  track('wallet_created', { kind: 'device' });
 }
 
 export async function removeDeviceWallet() {

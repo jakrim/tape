@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { Sentry } from '@/lib/monitoring';
 import { useMarketsFeed } from '@/market/markets';
 import { colors } from '@/ui/theme';
 import { WalletProvider } from '@/wallet/WalletProvider';
@@ -23,7 +24,7 @@ const navTheme = {
   },
 };
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   useMarketsFeed();
 
@@ -49,6 +50,17 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="market/[coin]" options={{ title: '' }} />
             <Stack.Screen
+              name="deposit"
+              options={{
+                presentation: 'formSheet',
+                headerShown: false,
+                sheetAllowedDetents: [0.8],
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 24,
+                contentStyle: { backgroundColor: colors.bg },
+              }}
+            />
+            <Stack.Screen
               name="order"
               options={{
                 presentation: 'formSheet',
@@ -65,3 +77,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

@@ -37,11 +37,26 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@sentry/react-native",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7a28c8d1-fb83-4427-beb7-763ff936560d"
+      }
+    },
+    "owner": "jakrim",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7a28c8d1-fb83-4427-beb7-763ff936560d"
     }
   }
 }

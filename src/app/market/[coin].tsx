@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { track } from '@/lib/analytics';
 import { INTERVALS, useCandles, useCandleStore, type Interval } from '@/market/candles';
 import { useConnection } from '@/market/clients';
 import { useCoin, useCoinFeed } from '@/market/coin';
@@ -43,6 +44,10 @@ export default function MarketScreen() {
   const candles = useCandleStore((s) => s.candles);
   const candlesLoading = useCandleStore((s) => s.loading);
   const network = useConnection((s) => s.network);
+
+  useEffect(() => {
+    track('market_opened', { coin, network });
+  }, [coin, network]);
 
   // The focused-asset stream updates ~1/s; fall back to the list snapshot until it arrives.
   const ctx = liveCtx ?? listCtx;

@@ -1,7 +1,8 @@
 // Learn more https://docs.expo.dev/guides/customizing-metro
-const { getDefaultConfig } = require('expo/metro-config');
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+// Sentry's wrapper around Expo's default config adds debug IDs so stack traces map to source.
+const config = getSentryExpoConfig(__dirname);
 
 // Two wallet dependencies ship package exports that break under React Native (per Privy's setup guide):
 // - isows (used by viem): resolve without package exports

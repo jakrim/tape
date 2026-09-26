@@ -1,0 +1,100 @@
+{
+  "details": {
+    "currencyIn": {
+      "currency": {
+        "chainId": 8453,
+        "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "symbol": "USDC",
+        "name": "USD Coin",
+        "decimals": 6,
+        "metadata": {
+          "logoURI": "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png?1696506694",
+          "verified": true
+        }
+      },
+      "amount": "100000000",
+      "amountFormatted": "100.0",
+      "amountUsd": "99.989600",
+      "minimumAmount": "100000000"
+    },
+    "currencyOut": {
+      "currency": {
+        "chainId": 1337,
+        "address": "0x00000000000000000000000000000000",
+        "symbol": "USDC",
+        "name": "USDC (Perps)",
+        "decimals": 8,
+        "metadata": {
+          "logoURI": "https://ethereum-optimism.github.io/data/USDC/logo.png",
+          "verified": true
+        }
+      },
+      "amount": "9876999800",
+      "amountFormatted": "98.769998",
+      "amountUsd": "98.759726",
+      "minimumAmount": "9679459800"
+    },
+    "timeEstimate": 1,
+    "totalImpact": {
+      "usd": "-1.229874",
+      "percent": "-1.23"
+    },
+    "rate": "0.98769998"
+  },
+  "fees": {
+    "gas": {
+      "amountUsd": "0.008296",
+      "amountFormatted": "0.000003093506900398",
+      "currency": {
+        "symbol": "ETH"
+      }
+    },
+    "relayer": {
+      "amountUsd": "1.229874",
+      "amountFormatted": "1.230002",
+      "currency": {
+        "symbol": "USDC"
+      }
+    },
+    "relayerGas": {
+      "amountUsd": "1.199875",
+      "amountFormatted": "1.2",
+      "currency": {
+        "symbol": "USDC"
+      }
+    },
+    "relayerService": {
+      "amountUsd": "0.029999",
+      "amountFormatted": "0.030002",
+      "currency": {
+        "symbol": "USDC"
+      }
+    },
+    "app": {
+      "amountUsd": "0",
+      "amountFormatted": "0.0",
+      "currency": {
+        "symbol": "USDC"
+      }
+    },
+    "subsidized": {
+      "amountUsd": "0",
+      "amountFormatted": "0.0",
+      "currency": {
+        "symbol": "USDC"
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "approve",
+      "action": "Confirm transaction in your wallet",
+      "kind": "transaction"
+    },
+    {
+      "id": "deposit",
+      "action": "Confirm transaction in your wallet",
+      "kind": "transaction"
+    }
+  ]
+}

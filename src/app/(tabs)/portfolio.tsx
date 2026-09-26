@@ -53,6 +53,7 @@ export default function PortfolioScreen() {
               <Row label="Unrealized PnL" value={formatUsd(totalPnl)} tone={totalPnl >= 0 ? 'up' : 'down'} />
               <Row label="Margin used" value={formatUsd(marginUsed ?? 0)} tone="muted" />
               <Row label="Withdrawable" value={formatUsd(withdrawable ?? 0)} tone="muted" />
+              <Button testID="open-deposit" title="Deposit from another chain" kind="secondary" onPress={() => router.push('/deposit')} />
             </Card>
 
             <Text variant="heading">Positions</Text>

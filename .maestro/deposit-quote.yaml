@@ -1,0 +1,28 @@
+# A live cross-chain route into Hyperliquid is quoted from Relay. Preview only: nothing is sent.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- tapOn: "Account"
+- runFlow:
+    when:
+      visible:
+        id: "create-device-wallet"
+    commands:
+      - tapOn:
+          id: "create-device-wallet"
+- extendedWaitUntil:
+    visible:
+      id: "wallet-address"
+    timeout: 10000
+- tapOn: "Portfolio"
+- extendedWaitUntil:
+    visible:
+      id: "open-deposit"
+    timeout: 15000
+- tapOn:
+    id: "open-deposit"
+- extendedWaitUntil:
+    visible: "You receive"
+    timeout: 20000
+- assertVisible: ".*Approve USDC.*"
+- takeScreenshot: deposit-quote

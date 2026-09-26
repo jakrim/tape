@@ -2,6 +2,7 @@ import { ExchangeClient } from '@nktkas/hyperliquid';
 import type { PrivateKeyAccount } from 'viem/accounts';
 import { create } from 'zustand';
 
+import { track } from '@/lib/analytics';
 import { getClients, type Network } from '@/market/clients';
 
 import { createKey, keyNames, loadKey } from './keys';
@@ -67,6 +68,7 @@ export async function enableTrading(owner: Owner, network: Network) {
     const agent = (await loadKey(name)) ?? (await createKey(name));
     await ownerExchange(owner, network).approveAgent({ agentAddress: agent.address, agentName: AGENT_NAME });
     useTrading.setState({ status: 'approved', agent });
+    track('trading_enabled', { network });
   } catch (e) {
     useTrading.setState({ status: 'error', error: messageOf(e) });
   }

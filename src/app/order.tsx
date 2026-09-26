@@ -1,8 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
+import { track } from '@/lib/analytics';
 import { useConnection } from '@/market/clients';
 import { bookMid, useCoin } from '@/market/coin';
 import { STALE_AFTER, useIsLive } from '@/market/freshness';
@@ -60,6 +61,10 @@ export default function OrderTicket() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: true; outcome: Outcome } | { ok: false; message: string } | null>(null);
 
+  useEffect(() => {
+    track('order_ticket_opened', { coin, side: params.side ?? 'long' });
+  }, [coin, params.side]);
+
   const mid = bookMid(book);
   const notional = num(amount) ?? 0;
   const entry = kind === 'limit' ? (num(limitPx) ?? 0) : (mid ?? 0);
@@ -93,11 +98,14 @@ export default function OrderTicket() {
     if (!perp || mid === null) return;
     setSubmitting(true);
     setResult(null);
+    track('order_submitted', { coin, kind, side, tpsl });
     try {
       const outcome = await submitTicket({ ...ticket, referencePx: mid, isCross }, perp, network);
+      track('order_result', { coin, status: outcome.status });
       setResult({ ok: true, outcome });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
+      track('order_result', { coin, status: 'rejected' });
       setResult({ ok: false, message: messageOf(e) });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
