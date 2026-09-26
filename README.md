@@ -1,56 +1,39 @@
-# Welcome to your Expo app 👋
+# Tape
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React Native 0.86 and TypeScript. It shows live mainnet markets and places real orders on Hyperliquid testnet. Built by Jesse Krim.
 
-## Get started
+| Markets | Trade | Order ticket (Android) | Wallet |
+|---|---|---|---|
+| ![Markets](docs/screenshots/ios-markets.png) | ![Trade](docs/screenshots/ios-trade-btc.png) | ![Order ticket](docs/screenshots/android-order-ticket.png) | ![Wallet](docs/screenshots/ios-account.png) |
 
-1. Install dependencies
+## What it does
 
-   ```bash
-   npm install
-   ```
+- **Live markets.** All Hyperliquid perps over one shared WebSocket. Updates are applied once per frame, rows re-render only when their own market changes, and every screen says whether its data is live, delayed or reconnecting.
+- **Trade screen.** Skia candle chart with a crosshair that runs on the UI thread, fast order book (2 updates a second), trade tape, funding countdown.
+- **Wallet.** Privy embedded wallets (EVM and Solana) via email, or a key generated on the device. The wallet approves a trading key once, then every order is signed on the phone with no prompt. The trading key can't withdraw.
+- **Orders.** Market, limit and TWAP, leverage, cross or isolated margin, take profit and stop loss. Positions and PnL come straight from the exchange.
+- **Backend.** Supabase with Sign in with Ethereum. The watchlist is protected by row-level security and tested with pgTAP.
+- **Releases.** EAS Workflows: checks on every PR and a weekly release that ships an over-the-air update or a new store build depending on the native fingerprint.
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env.local   # add Privy and Supabase values, or leave Privy empty to use a device wallet
+npx expo run:ios             # or: npx expo run:android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Placing filled orders needs test USDC in the wallet. Hyperliquid's testnet faucet only pays addresses that have deposited on mainnet, so without it the exchange answers "Must deposit before performing actions", which the app shows as returned.
 
-### Other setup steps
+## Checks
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm run typecheck
+npm test                                   # trading math and formatting (node --test)
+npx supabase@latest test db                # row-level security (pgTAP), needs `npx supabase@latest start`
+maestro test -e DEV_CLIENT=true .maestro   # end-to-end flows on a simulator or emulator
+```
 
-## Learn more
+## Docs
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Architecture](docs/ARCHITECTURE.md): how data, wallets, orders and releases fit together.
