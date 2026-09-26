@@ -87,8 +87,8 @@ export default function MarketsScreen() {
         <MarketListSkeleton rowHeight={MARKET_ROW_HEIGHT} />
       ) : (
         <FlashList
-          // A sort change reorders every row. Recycled cells from the previous order left the first
-          // slot blank after scrolling, so each sort gets a fresh list, which also starts at the top.
+          // A new sort starts a fresh list at the top. (The blank first row seen after re-sorting or
+          // refreshing was FlashList 2.0.2 keeping stale layout indices; fixed by upgrading to 2.3.)
           key={sort}
           maintainVisibleContentPosition={{ disabled: true }}
           testID="market-list"

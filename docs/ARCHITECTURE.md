@@ -141,6 +141,8 @@ The compiler also treats a Reanimated shared value's `.value` as a plain propert
 ## Dependency notes
 
 - `viem` is pinned to 2.56.0 because `@privy-io/expo` pins that exact version.
+- `@shopify/flash-list` is 2.3.2, newer than the 2.0.2 Expo recommends for SDK 57, because 2.0.2 left the first row blank after a data update. FlashList v2 is JavaScript only, so this doesn't touch the native build. `expo-doctor` will note the version difference.
+- `.env` holds one non-secret default for local native builds (`SENTRY_DISABLE_AUTO_UPLOAD=true`); secrets and per-developer values go in `.env.local`.
 - `.npmrc` sets `legacy-peer-deps=true`. Privy lists `permissionless` as an optional peer that wants an older `ox` than viem ships. Tape does not use Privy smart wallets, so the mismatch is accepted everywhere, including EAS builds.
 - `metro.config.js` resolves `isows` without package exports and `jose` with the browser condition, per Privy's setup guide.
 - `entrypoint.js` loads `fast-text-encoding`, `react-native-get-random-values` and `@ethersproject/shims` before the router.

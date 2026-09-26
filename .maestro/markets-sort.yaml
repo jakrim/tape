@@ -1,5 +1,5 @@
-# Regression: after switching sort (Gainers, then Volume) the first row rendered blank.
-# Cause: FlashList v2 keeps visible content anchored by default; disabled for this list.
+# Regression: the first row rendered blank after re-sorting (Gainers, then Volume) or after
+# pull-to-refresh. Cause: stale layout indices in FlashList 2.0.2, fixed by upgrading to 2.3.
 appId: com.jakrim.tape
 ---
 - runFlow: helpers/launch.yaml
@@ -13,5 +13,13 @@ appId: com.jakrim.tape
 - tapOn: "Volume"
 - waitForAnimationToEnd:
     timeout: 2000
+- assertVisible:
+    id: "market-row-BTC"
+- swipe:
+    start: "50%,45%"
+    end: "50%,80%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
 - assertVisible:
     id: "market-row-BTC"
