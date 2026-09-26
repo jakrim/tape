@@ -30,7 +30,7 @@ export function AnimatedPrice({ value, style, testID }: { value: number | undefi
   }));
 
   return (
-    <AnimatedText testID={testID} accessibilityLabel={value === undefined ? undefined : `Mark price ${formatPrice(value)}`} style={[type.display, style, animated]}>
+    <AnimatedText testID={testID} maxFontSizeMultiplier={1.3} accessibilityLabel={value === undefined ? undefined : `Mark price ${formatPrice(value)}`} style={[type.display, style, animated]}>
       {value === undefined ? '—' : formatPrice(value)}
     </AnimatedText>
   );
