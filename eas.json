@@ -58,7 +58,6 @@
     "production": {
       "ios": {
         "appleTeamId": "A33AS9XAQT",
-        "ascAppId": "6816502139",
         "appName": "Tape Perps",
         "sku": "tape-ios",
         "language": "en-US"
