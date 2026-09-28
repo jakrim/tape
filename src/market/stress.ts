@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 
 import { onNextFrame } from './batcher';
@@ -148,20 +149,28 @@ export function startStressTest(seconds = 15) {
     owed.assetCtx %= 1;
     owed.candle %= 1;
 
-    if (Date.now() >= useStress.getState().endsAt) {
-      clearInterval(timer);
-      finish(seconds);
-    }
+    if (Date.now() >= useStress.getState().endsAt) stop(true);
   }, TICK_MS);
+
+  // Timers pause in the background, so on return the generator would replay the whole gap as
+  // one burst on top of the reconnecting live feed. Leaving the app ends the test without results.
+  const lifecycle = AppState.addEventListener('change', (state) => {
+    if (state === 'background') stop(false);
+  });
+  function stop(completed: boolean) {
+    clearInterval(timer);
+    lifecycle.remove();
+    finish(seconds, completed);
+  }
 }
 
-function finish(seconds: number) {
+function finish(seconds: number, completed: boolean) {
   // Drop synthetic trades and let the real streams (and a fresh market snapshot) take over.
   useCoin.setState((s) => ({ trades: s.trades.filter((t) => t.id >= 0) }));
   refreshMarkets();
   useStress.setState({
     running: false,
-    results: {
+    results: !completed ? null : {
       seconds,
       messages: samples.messages,
       avgUiFps: samples.n ? Math.round(samples.sumUi / samples.n) : 0,
