@@ -89,13 +89,20 @@ function closeClients(network: Network) {
  */
 export function useStreamLifecycle() {
   useEffect(() => {
+    let backgrounded = false;
     const sub = AppState.addEventListener('change', (state) => {
-      const { network, status } = useConnection.getState();
-      if (state === 'background' && status !== 'paused') {
+      const { network } = useConnection.getState();
+      if (state === 'background' && !backgrounded) {
+        backgrounded = true;
         closeClients(network);
         useConnection.setState({ status: 'paused' });
       }
-      if (state === 'active' && status === 'paused') {
+      if (state === 'active' && backgrounded) {
+        backgrounded = false;
+        // Anything that asked for data while in the background created a new socket, which the
+        // OS may have killed since, and its open event may have marked the status live. Start
+        // clean either way, so every screen resubscribes on a fresh connection.
+        closeClients(network);
         useConnection.setState((s) => ({ status: 'connecting', epoch: s.epoch + 1 }));
       }
     });
