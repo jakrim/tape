@@ -20,8 +20,8 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 ## Try it
 
 - **iPhone:** install Apple's TestFlight app, then open https://testflight.apple.com/join/3KJ554Ra on the phone.
-- **Android:** open the [Expo install page](https://expo.dev/accounts/jakrim/projects/tape/builds/0dd5d17a-f410-4f2d-bd71-6d4d37389c14) on the phone and tap Install, or download the [APK from GitHub](https://github.com/jakrim/tape/releases/download/v1.0.0-preview/tape-android.apk) (173 MB).
-- **iOS Simulator (Mac with Xcode):** [open the build](https://expo.dev/accounts/jakrim/projects/tape/builds/7edee165-35cc-41c0-8443-ded6d9ff48c3) with Expo Orbit, or download the [simulator build](https://github.com/jakrim/tape/releases/download/v1.0.0-preview/tape-ios-simulator.tar.gz), unpack it and drag Tape.app onto a running simulator.
+- **Android:** open the [Expo install page](https://expo.dev/accounts/jakrim/projects/tape/builds/f903bb39-14ba-4f49-822f-64d3726517ea) on the phone and tap Install, or download the [APK from GitHub](https://github.com/jakrim/tape/releases/download/v1.0.0-preview/tape-android.apk) (173 MB).
+- **iOS Simulator (Mac with Xcode):** [open the build](https://expo.dev/accounts/jakrim/projects/tape/builds/ce9a812a-50ae-4bf9-944d-d10bb47e6bec) with Expo Orbit, or download the [simulator build](https://github.com/jakrim/tape/releases/download/v1.0.0-preview/tape-ios-simulator.tar.gz), unpack it and drag Tape.app onto a running simulator.
 
 No sign-up needed: on the Account tab, tap Create device wallet, or continue with email for a Privy wallet. The Account screen also has live frame rates and a 15 s stress test.
 
