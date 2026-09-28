@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Sentry } from '@/lib/monitoring';
 import { useStreamLifecycle } from '@/market/clients';
 import { useMarketsFeed } from '@/market/markets';
+import { useSystemMotionPreference } from '@/ui/motionPreference';
 import { colors } from '@/ui/theme';
 import { StressOverlay } from '@/ui/StressOverlay';
 import { ToastHost } from '@/ui/Toast';
@@ -28,6 +29,7 @@ const navTheme = {
 };
 
 function RootLayout() {
+  useSystemMotionPreference();
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   useMarketsFeed();
   useStreamLifecycle();

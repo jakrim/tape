@@ -9,6 +9,7 @@ Tape is a mobile perps trading app on Hyperliquid, built with Expo SDK 57, React
 ## What it does
 
 - **Live markets.** All Hyperliquid perps over one shared WebSocket. Updates are applied once per frame, rows re-render only when their own market changes, and every screen says whether its data is live, delayed or reconnecting.
+- **Price motion.** Changed digits roll up in green or down in red, then settle to white. Decimal places stay aligned; reduced motion is respected. Account includes an isolated preview to test both directions.
 - **Trade screen.** Skia candle chart with a crosshair that runs on the UI thread, fast order book (2 updates a second), trade tape, funding countdown.
 - **Wallet.** Privy embedded wallets (EVM and Solana) via email, or a key generated on the device. The wallet approves a trading key once, then every order is signed on the phone with no prompt. The trading key can't withdraw.
 - **Orders.** Market, limit and TWAP, leverage, cross or isolated margin, take profit and stop loss. Positions and PnL come straight from the exchange.
@@ -49,3 +50,4 @@ maestro test -e DEV_CLIENT=true .maestro   # end-to-end flows on a simulator or 
 - [Stack decisions](docs/STACK.md): each choice, what else was considered, and where I've shipped it before.
 - [Real-time data and performance](docs/PERFORMANCE.md): keeping the screen honest, holding the frame rate, and what has been measured.
 - [Shipping](docs/SHIPPING.md): the weekly release pipeline and how I work.
+- [Security and funding checks](docs/SECURITY.md): testnet safeguards, signing tests, key storage, and the remaining funded-device checks.

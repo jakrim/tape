@@ -11,7 +11,7 @@ import { useCoin, useCoinFeed } from '@/market/coin';
 import { useFavorites } from '@/market/favorites';
 import { STALE_AFTER, useClock } from '@/market/freshness';
 import { useMarkets } from '@/market/markets';
-import { formatCountdown, formatFunding, formatPct, formatUsdCompact, formatPrice } from '@/trading/format';
+import { formatCountdown, formatFunding, formatUsd, formatUsdCompact, formatPrice } from '@/trading/format';
 import { msToNextFunding } from '@/trading/math';
 import { AnimatedPrice } from '@/ui/AnimatedPrice';
 import { Button } from '@/ui/Button';
@@ -86,9 +86,9 @@ function MarketHeader({ coin }: { coin: string }) {
           </View>
           <LiveBadge updatedAt={ctxAt} staleAfterMs={STALE_AFTER.assetCtx} />
         </View>
-        <AnimatedPrice value={ctx?.markPx} testID="mark-price" />
+        <AnimatedPrice key={coin} value={ctx?.markPx} testID="mark-price" style={{ fontSize: 40 }} />
         <Text variant="num" tone={(change ?? 0) >= 0 ? 'up' : 'down'}>
-          {change === null ? ' ' : `${formatPct(change)} 24h`}
+          {change === null || !ctx ? ' ' : `${change >= 0 ? '↗' : '↘'} ${formatUsd(Math.abs(ctx.markPx - ctx.prevDayPx))} (${(Math.abs(change) * 100).toFixed(2)}%) 24h`}
         </Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stats}>
@@ -104,13 +104,14 @@ function MarketHeader({ coin }: { coin: string }) {
 function ChartSection({ coin }: { coin: string }) {
   const { width } = useWindowDimensions();
   const [interval, setChartInterval] = useState<Interval>('15m');
-  const [mode, setMode] = useState<ChartMode>('candles');
+  const [mode, setMode] = useState<ChartMode>('line');
   useCandles(coin, interval);
   const candles = useCandleStore((s) => s.candles);
   const loading = useCandleStore((s) => s.loading);
 
   return (
     <>
+      <CandleChart candles={candles} width={width} height={260} loading={loading} mode={mode} />
       <View style={styles.intervals}>
         {INTERVALS.map((i) => (
           <Chip key={i} label={i} selected={i === interval} onPress={() => setChartInterval(i)} />
@@ -128,9 +129,8 @@ function ChartSection({ coin }: { coin: string }) {
           <Ionicons name={mode === 'candles' ? 'analytics-outline' : 'bar-chart-outline'} size={18} color={colors.textMuted} />
         </Pressable>
       </View>
-      <CandleChart candles={candles} width={width} height={260} loading={loading} mode={mode} />
       <Text variant="caption" tone="faint" style={styles.hint}>
-        Press and hold the chart to inspect a candle
+        Candle interval · Press and hold to inspect
       </Text>
     </>
   );
@@ -218,7 +218,7 @@ function FavoriteButton({ coin }: { coin: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: space.lg, gap: 2 },
+  header: { paddingHorizontal: space.lg, gap: space.sm, paddingTop: space.sm },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xs },
   levBadge: { backgroundColor: colors.surface, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   stats: { paddingHorizontal: space.lg, gap: space.xl, paddingVertical: space.md },

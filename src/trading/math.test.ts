@@ -10,6 +10,7 @@ import {
   toWireSize,
   unrealizedPnl,
   validateTicket,
+  validateOrderPrecision,
   type TicketInput,
 } from './math.ts';
 
@@ -113,4 +114,20 @@ test('ticket validation explains the first problem', () => {
   assert.equal(validateTicket({ ...base, takeProfitPx: 90 }), 'Take profit must be above entry');
   assert.equal(validateTicket({ ...base, side: 'short', stopLossPx: 90 }), 'Stop loss must be above entry');
   assert.equal(validateTicket({ ...base, availableMargin: 5 }), 'Not enough margin');
+});
+
+test('invalid numeric inputs cannot reach order review', () => {
+  for (const value of [NaN, Infinity, -Infinity]) {
+    assert.notEqual(validateTicket({ ...base, notionalUsd: value }), null);
+    assert.notEqual(validateTicket({ ...base, referencePx: value }), null);
+    assert.notEqual(validateTicket({ ...base, takeProfitPx: value }), null);
+    assert.notEqual(validateTicket({ ...base, stopLossPx: value }), null);
+  }
+  assert.notEqual(validateTicket({ ...base, kind: 'twap', twapMinutes: 5.5 }), null);
+});
+
+test('review rejects prices below the tick and amounts below the rounded lot minimum', () => {
+  assert.equal(validateOrderPrecision(base, 3), null);
+  assert.match(validateOrderPrecision({ ...base, kind: 'limit', limitPx: 0.000000001 }, 3)!, /smallest tick/);
+  assert.match(validateOrderPrecision({ ...base, referencePx: 84585, notionalUsd: 10 }, 5)!, /Rounded order size/);
 });

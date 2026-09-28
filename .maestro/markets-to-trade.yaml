@@ -17,4 +17,9 @@ appId: com.jakrim.tape
     visible:
       id: "candle-chart"
     timeout: 15000
-- takeScreenshot: trade-btc
+- assertVisible: "Show candles"
+- takeScreenshot: trade-btc-line
+- tapOn:
+    id: "chart-mode"
+- assertVisible: "Show line chart"
+- takeScreenshot: trade-btc-candles

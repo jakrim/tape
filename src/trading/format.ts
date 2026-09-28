@@ -25,6 +25,23 @@ export function formatPrice(px: number | string, decimals?: number): string {
   return fixed(decimals ?? priceDecimals(n)).format(n);
 }
 
+/**
+ * Consumer price display: dollars and cents, plus any finer digits the exchange quotes.
+ * Decimals are fixed per magnitude so a price ending in 0 ($91.680) keeps its width.
+ * Never use this for order sizing.
+ */
+export function formatDisplayPrice(px: number | string): string {
+  const n = typeof px === 'string' ? Number(px) : px;
+  if (!Number.isFinite(n)) return '—';
+  return `${n < 0 ? '-' : ''}$${fixed(Math.max(2, priceDecimals(n))).format(Math.abs(n))}`;
+}
+
+export function displayedPriceDirection(previous: number | undefined, current: number | undefined): -1 | 0 | 1 {
+  if (previous === undefined || current === undefined || !Number.isFinite(previous) || !Number.isFinite(current)
+    || formatDisplayPrice(previous) === formatDisplayPrice(current)) return 0;
+  return current > previous ? 1 : -1;
+}
+
 export function formatUsd(n: number, decimals = 2): string {
   if (!Number.isFinite(n)) return '—';
   const sign = n < 0 ? '-' : '';

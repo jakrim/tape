@@ -2,7 +2,7 @@ import { useLoginWithEmail, usePrivy } from '@privy-io/expo';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
-import { useIsFocused } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBackend } from '@/backend/session';
@@ -160,6 +160,7 @@ function WalletCard() {
           </Text>
         </View>
       ) : null}
+      <Button testID="receive-funds" title="Receive test funds" kind="secondary" onPress={() => router.push('/receive')} />
       <SignOut />
     </Card>
   );
@@ -257,6 +258,7 @@ function PreferencesCard() {
           trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
         />
       </View>
+      <Button title="Preview price motion" testID="price-motion-preview" kind="secondary" onPress={() => router.push('/motion-preview')} />
     </Card>
   );
 }

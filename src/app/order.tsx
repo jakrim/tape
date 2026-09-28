@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { track } from '@/lib/analytics';
@@ -14,10 +14,15 @@ import {
   feeEstimate,
   marginRequired,
   validateTicket,
+  validateOrderPrecision,
+  toWireSize,
+  toWirePrice,
+  marketLimitPrice,
   type OrderKind,
   type Side,
 } from '@/trading/math';
-import { submitTicket, type Outcome } from '@/trading/orders';
+import { submitTicket, type Outcome, type Ticket } from '@/trading/orders';
+import { reviewBlocker } from '@/trading/review';
 import { Button } from '@/ui/Button';
 import { Row } from '@/ui/Card';
 import { Segmented } from '@/ui/Segmented';
@@ -61,6 +66,9 @@ export default function OrderTicket() {
   const [sl, setSl] = useState('');
   const [minutes, setMinutes] = useState('30');
   const [submitting, setSubmitting] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const submittingRef = useRef(false);
+  const [review, setReview] = useState<{ ticket: Ticket; ownerAddress: string; szDecimals: number; at: number } | null>(null);
   const [result, setResult] = useState<{ ok: true; outcome: Outcome } | { ok: false; message: string } | null>(null);
 
   useEffect(() => {
@@ -81,8 +89,8 @@ export default function OrderTicket() {
     kind, side, notionalUsd: notional, leverage, maxLeverage,
     referencePx: mid ?? 0,
     limitPx: num(limitPx),
-    takeProfitPx: tpsl ? num(tp) : undefined,
-    stopLossPx: tpsl ? num(sl) : undefined,
+    takeProfitPx: tpsl && kind !== 'twap' ? num(tp) : undefined,
+    stopLossPx: tpsl && kind !== 'twap' ? num(sl) : undefined,
     twapMinutes: num(minutes),
     availableMargin: withdrawable ?? undefined,
     dataIsLive: live && mid !== null,
@@ -95,16 +103,35 @@ export default function OrderTicket() {
   else if (!perp) blocker = `${coin} isn't listed on ${network}`;
   else if (network === 'mainnet') blocker = 'Trading is on testnet';
   else if (!owner) blocker = 'Create a wallet to trade';
-  else if (agentStatus !== 'approved') blocker = 'Enable trading in Account';
-  else blocker = validateTicket(ticket);
+  else if (review && agentStatus !== 'approved') blocker = 'Enable trading in Account';
+  // An unfunded reviewer can inspect the preview. Only confirmation needs trading authority
+  // and available margin; it is checked again inside submit immediately before signing.
+  else blocker = validateTicket({ ...ticket, availableMargin: review ? ticket.availableMargin : undefined })
+    ?? validateOrderPrecision(ticket, perp.szDecimals);
 
   const submit = async () => {
-    if (!perp || mid === null) return;
+    if (!review || submittingRef.current || !perp) return;
+    const connection = useConnection.getState();
+    const feed = useCoin.getState();
+    const dataIsLive = connection.status === 'live' && feed.coin === coin && feed.bookAt !== null && Date.now() - feed.bookAt <= STALE_AFTER.book;
+    const reason = reviewBlocker(review, {
+      network: connection.network, ownerAddress: useWallet.getState().owner?.address,
+      now: Date.now(), dataIsLive, stressRunning: useStress.getState().running,
+    }) ?? blocker ?? validateTicket({ ...review.ticket, maxLeverage,
+      availableMargin: withdrawable ?? undefined,
+      dataIsLive,
+    });
+    if (reason) {
+      setReview(null);
+      setResult({ ok: false, message: reason });
+      return;
+    }
+    submittingRef.current = true;
     setSubmitting(true);
     setResult(null);
     track('order_submitted', { coin, kind, side, tpsl });
     try {
-      const outcome = await submitTicket({ ...ticket, referencePx: mid, isCross }, perp, network);
+      const outcome = await submitTicket(review.ticket, perp, network);
       track('order_result', { coin, status: outcome.status });
       setResult({ ok: true, outcome });
       haptic('success');
@@ -113,7 +140,9 @@ export default function OrderTicket() {
       setResult({ ok: false, message: messageOf(e) });
       haptic('error');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
+      setReview(null);
     }
   };
 
@@ -125,7 +154,8 @@ export default function OrderTicket() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" testID="order-ticket">
+    <View style={{ flex: 1 }}>
+    <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" testID="order-ticket">
       <View style={styles.head}>
         <Text variant="title">{coin}</Text>
         <Text variant="num" tone="muted">
@@ -133,6 +163,24 @@ export default function OrderTicket() {
         </Text>
       </View>
 
+      {review ? (
+        <View style={styles.summary} testID="order-review">
+          <Text variant="title">Review testnet order</Text>
+          <Row label="Order" value={`${review.ticket.side === 'long' ? 'Long' : 'Short'} ${coin} · ${review.ticket.kind}`} />
+          <Row label="Wallet" value={`${review.ownerAddress.slice(0, 6)}…${review.ownerAddress.slice(-4)}`} />
+          <Row label="Order value" value={formatUsd(review.ticket.notionalUsd)} />
+          <Row label="Size (rounded down)" value={`${toWireSize(review.ticket.notionalUsd / (review.ticket.kind === 'limit' ? review.ticket.limitPx! : review.ticket.referencePx), review.szDecimals)} ${coin}`} />
+          <Row label="Margin mode" value={`${review.ticket.isCross ? 'Cross' : 'Isolated'} · ${review.ticket.leverage}x`} />
+          <Row label="Est. margin" value={formatUsd(marginRequired(review.ticket.notionalUsd, review.ticket.leverage))} />
+          <Row label="Est. fee" value={formatUsd(feeEstimate(review.ticket.notionalUsd, review.ticket.kind !== 'limit'), 3)} />
+          {review.ticket.kind === 'limit' ? <Row label="Limit price (exchange tick)" value={formatPrice(toWirePrice(review.ticket.limitPx!, review.szDecimals))} /> : null}
+          {review.ticket.kind === 'market' ? <Row label="Price cap (5% slippage)" value={formatPrice(marketLimitPrice(review.ticket.referencePx, review.ticket.side, review.szDecimals))} /> : null}
+          {review.ticket.kind === 'twap' ? <Row label="Duration" value={`${review.ticket.twapMinutes} minutes`} /> : null}
+          {review.ticket.takeProfitPx ? <Row label="Take profit" value={formatPrice(review.ticket.takeProfitPx)} /> : null}
+          {review.ticket.stopLossPx ? <Row label="Stop loss" value={formatPrice(review.ticket.stopLossPx)} /> : null}
+          <Text tone="muted">Test funds only. This review expires after 30 seconds. Execution and fees may differ from estimates.</Text>
+        </View>
+      ) : <>
       <Segmented<Side>
         value={side}
         onChange={setSide}
@@ -206,6 +254,7 @@ export default function OrderTicket() {
         <Row label="Est. fee" value={formatUsd(feeEstimate(notional, kind !== 'limit'), 3)} tone="muted" />
         {withdrawable !== null ? <Row label="Available" value={formatUsd(withdrawable)} tone="muted" /> : null}
       </View>
+      </>}
 
       {result ? <ResultBanner result={result} coin={coin} /> : null}
 
@@ -214,13 +263,19 @@ export default function OrderTicket() {
       ) : (
         <Button
           testID="submit-order"
-          title={blocker ?? `${side === 'long' ? 'Long' : 'Short'} ${coin}`}
+          title={blocker ?? (review ? `Confirm ${side === 'long' ? 'long' : 'short'}` : 'Review order')}
           kind={blocker ? 'secondary' : side}
           disabled={Boolean(blocker)}
           loading={submitting}
-          onPress={submit}
+          onPress={review ? submit : () => {
+            if (blocker || !owner || !perp) return;
+            setResult(null);
+            setReview({ ticket: { ...ticket, isCross: isCross && !perp.isolatedOnly }, ownerAddress: owner.address, szDecimals: perp.szDecimals, at: Date.now() });
+            scrollRef.current?.scrollTo({ y: 0, animated: false });
+          }}
         />
       )}
+      {review ? <Button title="Edit order" kind="secondary" disabled={submitting} onPress={() => setReview(null)} /> : null}
       {network === 'mainnet' ? (
         <Button
           title="Switch to testnet"
@@ -235,6 +290,7 @@ export default function OrderTicket() {
         Liquidation and fees are estimates at the base fee tier. Positions show the exchange’s own numbers once opened.
       </Text>
     </ScrollView>
+    </View>
   );
 }
 
@@ -242,7 +298,7 @@ function ResultBanner({ result, coin }: { result: { ok: true; outcome: Outcome }
   if (!result.ok) {
     return (
       <View style={[styles.banner, { backgroundColor: colors.downFaint }]} testID="order-error">
-        <Text variant="bodyStrong" tone="down">Exchange rejected the order</Text>
+        <Text variant="bodyStrong" tone="down">Order not completed</Text>
         <Text tone="muted">{result.message}</Text>
       </View>
     );
@@ -276,6 +332,8 @@ function Field(p: {
           value={p.value}
           onChangeText={p.onChange}
           keyboardType="decimal-pad"
+          inputAccessoryViewButtonLabel="Done editing"
+          returnKeyType="done"
           placeholder="0"
           placeholderTextColor={colors.textFaint}
           style={styles.fieldInput}

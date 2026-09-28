@@ -4,7 +4,6 @@ import {
   DashPathEffect,
   Group,
   Line,
-  LinearGradient,
   Path,
   Rect,
   Skia,
@@ -44,7 +43,7 @@ export type ChartMode = 'candles' | 'line';
 type Props = { candles: Candle[]; width: number; height: number; loading?: boolean; mode?: ChartMode };
 
 /**
- * Price chart drawn with Skia, as candles or as a line with a gradient fill.
+ * Price chart drawn with Skia, as candles or as a line with a dotted fill.
  * Geometry is rebuilt only when the candle array changes, which the frame batcher limits to
  * once per frame, and each mode is a handful of paths however many candles there are.
  * The crosshair runs entirely on the UI thread: the finger position, the candle under it and
@@ -57,6 +56,13 @@ export function CandleChart({ candles, width, height, loading, mode = 'candles' 
   const volTop = TOP + priceH + 6;
   const volH = height - volTop;
   const reduceMotion = useReducedMotion();
+  const dots = useMemo(() => {
+    const path = Skia.PathBuilder.Make();
+    for (let x = 4; x < plotW; x += 6) {
+      for (let y = TOP; y < TOP + priceH; y += 6) path.addCircle(x, y, 0.7);
+    }
+    return path.detach();
+  }, [plotW, priceH]);
 
   const g = useMemo(() => {
     const n = candles.length;
@@ -69,6 +75,8 @@ export function CandleChart({ candles, width, height, loading, mode = 'candles' 
       if (c.h > hi) hi = c.h;
       if (c.v > vMax) vMax = c.v;
     }
+    const lowLabel = formatPrice(lo);
+    const highLabel = formatPrice(hi);
     const pad = (hi - lo) * 0.06 || hi * 0.001;
     lo -= pad;
     hi += pad;
@@ -112,7 +120,7 @@ export function CandleChart({ candles, width, height, loading, mode = 'candles' 
       return { y: y(p), label: Math.abs(y(p) - lastY) < 14 ? '' : formatPrice(p) };
     });
     return {
-      n, lo, hi, step, grid, lastY,
+      n, lo, hi, step, grid, lastY, lowLabel, highLabel,
       lastX: (n - 1) * step + step / 2,
       up: up.detach(),
       down: down.detach(),
@@ -232,14 +240,12 @@ export function CandleChart({ candles, width, height, loading, mode = 'candles' 
           </>
         ) : (
           <>
-            <Path path={g.area}>
-              <LinearGradient
-                start={vec(0, TOP)}
-                end={vec(0, TOP + priceH)}
-                colors={[g.periodUp ? 'rgba(70,255,4,0.28)' : 'rgba(255,77,106,0.28)', 'rgba(0,0,0,0)']}
-              />
-            </Path>
+            <Group clip={g.area}>
+              <Path path={dots} color={lineColor} opacity={0.4} />
+            </Group>
             <Path path={g.line} color={lineColor} style="stroke" strokeWidth={2} strokeJoin="round" strokeCap="round" />
+            <SkText x={8} y={TOP + 12} text={`High ${g.highLabel}`} font={font} color={colors.textMuted} />
+            <SkText x={8} y={TOP + priceH - 6} text={`Low ${g.lowLabel}`} font={font} color={colors.textMuted} />
           </>
         )}
 

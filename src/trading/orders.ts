@@ -1,8 +1,9 @@
 import type { Network } from '@/market/clients';
 import type { Perp } from '@/market/markets';
 import { agentExchange } from '@/wallet/trading';
+import { useWallet } from '@/wallet/store';
 
-import { marketLimitPrice, toWirePrice, toWireSize, type OrderKind, type Side } from './math';
+import { marketLimitPrice, toWirePrice, toWireSize, validateOrderPrecision, type OrderKind, type Side } from './math';
 
 export type Ticket = {
   kind: OrderKind;
@@ -34,7 +35,10 @@ function toOutcome(status: OrderStatus | undefined): Outcome {
 }
 
 export async function submitTicket(t: Ticket, perp: Perp, network: Network): Promise<Outcome> {
+  const owner = useWallet.getState().owner;
   const exchange = agentExchange(network);
+  const precisionError = validateOrderPrecision(t, perp.szDecimals);
+  if (precisionError) throw new Error(precisionError);
   const isBuy = t.side === 'long';
   const entryPx = t.kind === 'limit' && t.limitPx ? t.limitPx : t.referencePx;
   const size = toWireSize(t.notionalUsd / entryPx, perp.szDecimals);
@@ -42,6 +46,9 @@ export async function submitTicket(t: Ticket, perp: Perp, network: Network): Pro
 
   // Leverage is per asset on Hyperliquid, so set it explicitly before every entry.
   await exchange.updateLeverage({ asset: perp.index, isCross: t.isCross && !perp.isolatedOnly, leverage: t.leverage });
+  // A wallet/network switch during the leverage request must not send a subsequent order.
+  if (useWallet.getState().owner !== owner) throw new Error('Wallet changed. Review the order again.');
+  agentExchange(network);
 
   if (t.kind === 'twap') {
     const res = await exchange.twapOrder({

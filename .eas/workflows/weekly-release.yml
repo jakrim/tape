@@ -19,10 +19,11 @@ on:
 
 jobs:
   check:
-    name: Typecheck + unit tests
+    name: Lint + typecheck + unit tests
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
 
@@ -40,7 +41,7 @@ jobs:
     type: maestro
     params:
       build_id: ${{ needs.e2e_build.outputs.build_id }}
-      flow_path: ['.maestro/markets-to-trade.yaml', '.maestro/wallet-setup.yaml', '.maestro/order-ticket.yaml', '.maestro/deposit-quote.yaml']
+      flow_path: ['.maestro/price-motion.yaml', '.maestro/markets-to-trade.yaml', '.maestro/markets-sort.yaml', '.maestro/wallet-setup.yaml', '.maestro/order-ticket.yaml', '.maestro/order-review.yaml', '.maestro/receive-funds.yaml', '.maestro/deposit-quote.yaml']
       retries: 1
 
   fingerprint:

@@ -22,7 +22,17 @@ appId: com.jakrim.tape
 - tapOn:
     id: "amount-input"
 - inputText: "250"
-- hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Done editing"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertVisible: "Est. liquidation"
 - scrollUntilVisible:
     element: "Trading is on testnet"

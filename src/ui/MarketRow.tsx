@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
-import { memo, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { memo } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useMarkets } from '@/market/markets';
-import { formatPct, formatPrice, formatUsdCompact } from '@/trading/format';
+import { formatDisplayPrice, formatUsdCompact } from '@/trading/format';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
-import { colors, radius, space } from './theme';
+import { colors, space, type } from './theme';
+import { AnimatedPrice } from './AnimatedPrice';
 
 export const MARKET_ROW_HEIGHT = 64;
 
@@ -17,25 +17,9 @@ export const MARKET_ROW_HEIGHT = 64;
  * row and nothing else. The up/down flash runs on the UI thread.
  */
 export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
+  const { width } = useWindowDimensions();
   const perp = useMarkets((s) => s.perpByCoin[coin]);
   const ctx = useMarkets((s) => s.ctxByCoin[coin]);
-
-  const flash = useSharedValue(0); // 1 = flashed up, -1 = flashed down, 0 = rest
-  const lastPx = useRef<number | undefined>(undefined);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    const px = ctx?.markPx;
-    if (!reduceMotion && px !== undefined && lastPx.current !== undefined && px !== lastPx.current) {
-      flash.set(px > lastPx.current ? 1 : -1);
-      flash.set(withTiming(0, { duration: 700 }));
-    }
-    lastPx.current = px;
-  }, [ctx?.markPx, flash, reduceMotion]);
-
-  const flashStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(flash.value, [-1, 0, 1], [colors.downFaint, 'transparent', colors.upFaint]),
-  }));
 
   if (!perp) return null;
   const change = ctx && ctx.prevDayPx > 0 ? (ctx.markPx - ctx.prevDayPx) / ctx.prevDayPx : null;
@@ -46,7 +30,7 @@ export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
       scaleTo={0.985}
       testID={`market-row-${coin}`}
       accessibilityRole="button"
-      accessibilityLabel={`${coin} ${ctx ? formatPrice(ctx.markPx) : ''}`}
+      accessibilityLabel={`${coin} ${ctx ? formatDisplayPrice(ctx.markPx) : ''}`}
       onPress={() => router.push({ pathname: '/market/[coin]', params: { coin } })}
       style={styles.row}>
       <View style={styles.left}>
@@ -62,12 +46,12 @@ export const MarketRow = memo(function MarketRow({ coin }: { coin: string }) {
           {ctx ? `${formatUsdCompact(ctx.dayNtlVlm)} vol` : '—'}
         </Text>
       </View>
-      <Animated.View style={[styles.priceBox, flashStyle]}>
-        <Text variant="num">{ctx ? formatPrice(ctx.markPx) : '—'}</Text>
-      </Animated.View>
-      <View style={[styles.changePill, { backgroundColor: up ? colors.upFaint : colors.downFaint }]}>
+      <View style={styles.priceBox}>
+        <AnimatedPrice key={coin} value={ctx?.markPx} maxWidth={width * 0.37} style={{ ...type.num, fontVariant: ['tabular-nums'], letterSpacing: 0 }} />
+      </View>
+      <View style={styles.changePill}>
         <Text variant="num" tone={up ? 'up' : 'down'} style={styles.changeText}>
-          {change === null ? '—' : formatPct(change)}
+          {change === null ? '—' : `${up ? '↗' : '↘'} ${(Math.abs(change) * 100).toFixed(2)}%`}
         </Text>
       </View>
     </PressableScale>
@@ -90,12 +74,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
   },
-  priceBox: { paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6 },
+  priceBox: { maxWidth: '43%', paddingVertical: 4 },
   changePill: {
     minWidth: 76,
     alignItems: 'center',
     paddingVertical: 6,
-    borderRadius: radius.control - 2,
   },
   changeText: { fontSize: 13 },
 });

@@ -11,7 +11,7 @@ import { syncFavorites } from '@/market/favorites';
 import { useAccountFeed } from './account';
 import { createKey, deleteKey, keyNames, loadKey } from './keys';
 import { useWallet, type Owner } from './store';
-import { refreshAgent, useTrading } from './trading';
+import { refreshAgent, resetTrading } from './trading';
 
 export const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID;
 const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID;
@@ -110,7 +110,7 @@ function WalletEffects() {
 
   useEffect(() => {
     if (owner) refreshAgent(owner, network);
-    else useTrading.setState({ status: 'none', agent: null, error: null });
+    else resetTrading();
   }, [owner, network]);
 
   // Sign in to the backend with the wallet itself (SIWE), then load the saved watchlist.

@@ -120,25 +120,43 @@ export type TicketInput = {
 /** Returns the first reason the order can't be sent, or null when it's valid. */
 export function validateTicket(t: TicketInput): string | null {
   if (!t.dataIsLive) return 'Waiting for live prices';
-  if (!(t.notionalUsd > 0)) return 'Enter an amount';
+  if (!(t.referencePx > 0) || !Number.isFinite(t.referencePx)) return 'Waiting for live prices';
+  if (!(t.notionalUsd > 0) || !Number.isFinite(t.notionalUsd)) return 'Enter an amount';
   if (t.notionalUsd < MIN_ORDER_NOTIONAL) return `Minimum order is $${MIN_ORDER_NOTIONAL}`;
-  if (!(t.leverage >= 1 && t.leverage <= t.maxLeverage)) return `Leverage must be 1–${t.maxLeverage}x`;
-  if (t.kind === 'limit' && !(t.limitPx && t.limitPx > 0)) return 'Enter a limit price';
+  if (!(t.leverage >= 1 && t.leverage <= t.maxLeverage) || !Number.isInteger(t.leverage)) return `Leverage must be 1–${t.maxLeverage}x`;
+  if (t.kind === 'limit' && (!(t.limitPx && t.limitPx > 0) || !Number.isFinite(t.limitPx))) return 'Enter a limit price';
   if (t.kind === 'twap') {
     const m = t.twapMinutes ?? 0;
-    if (m < TWAP_MIN_MINUTES || m > TWAP_MAX_MINUTES) return 'TWAP runs 5 minutes to 24 hours';
+    if (!Number.isInteger(m) || m < TWAP_MIN_MINUTES || m > TWAP_MAX_MINUTES) return 'TWAP runs 5 minutes to 24 hours';
   }
   const entry = t.kind === 'limit' && t.limitPx ? t.limitPx : t.referencePx;
   const isLong = t.side === 'long';
   if (t.takeProfitPx !== undefined) {
+    if (!(t.takeProfitPx > 0) || !Number.isFinite(t.takeProfitPx)) return 'Enter a valid take profit price';
     if (isLong ? t.takeProfitPx <= entry : t.takeProfitPx >= entry)
       return `Take profit must be ${isLong ? 'above' : 'below'} entry`;
   }
   if (t.stopLossPx !== undefined) {
+    if (!(t.stopLossPx > 0) || !Number.isFinite(t.stopLossPx)) return 'Enter a valid stop loss price';
     if (isLong ? t.stopLossPx >= entry : t.stopLossPx <= entry)
       return `Stop loss must be ${isLong ? 'below' : 'above'} entry`;
   }
   if (t.availableMargin !== undefined && marginRequired(t.notionalUsd, t.leverage) > t.availableMargin)
     return 'Not enough margin';
   return null;
+}
+
+/** Check exchange precision before opening a review or changing account leverage. */
+export function validateOrderPrecision(t: Pick<TicketInput, 'kind' | 'notionalUsd' | 'referencePx' | 'limitPx' | 'takeProfitPx' | 'stopLossPx'>, szDecimals: number): string | null {
+  const entry = t.kind === 'limit' ? (t.limitPx ?? 0) : t.referencePx;
+  try {
+    const price = Number(toWirePrice(entry, szDecimals));
+    const size = Number(toWireSize(t.notionalUsd / entry, szDecimals));
+    if (size * price < MIN_ORDER_NOTIONAL) return 'Rounded order size is below the $10 minimum';
+    if (t.takeProfitPx !== undefined) toWirePrice(t.takeProfitPx, szDecimals);
+    if (t.stopLossPx !== undefined) toWirePrice(t.stopLossPx, szDecimals);
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
 }

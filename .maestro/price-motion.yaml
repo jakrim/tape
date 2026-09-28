@@ -1,0 +1,47 @@
+# Deterministic, isolated sample prices exercise the same component as live quotes.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- openLink: tape://motion-preview
+- extendedWaitUntil:
+    visible: "Feel every tick."
+    timeout: 20000
+- assertVisible: "Mark price \\$67,248.52"
+- tapOn:
+    id: motion-up
+- assertVisible: "Price increased"
+- assertVisible: "Mark price \\$67,249.79"
+- tapOn:
+    id: motion-down
+- assertVisible: "Price decreased"
+- assertVisible: "Mark price \\$67,248.52"
+- takeScreenshot: price-motion
+- tapOn:
+    id: motion-reduced
+- tapOn:
+    id: motion-up
+- assertVisible: "Mark price \\$67,249.79"
+- scrollUntilVisible:
+    element:
+      id: motion-rollover
+    direction: DOWN
+- tapOn:
+    id: motion-rollover
+- tapOn:
+    id: motion-rollover
+- scrollUntilVisible:
+    element:
+      id: motion-price
+    direction: UP
+- assertVisible: "Mark price \\$1,000.00"
+- scrollUntilVisible:
+    element:
+      id: motion-small
+    direction: DOWN
+- tapOn:
+    id: motion-small
+- scrollUntilVisible:
+    element:
+      id: motion-price
+    direction: UP
+- assertVisible: "Mark price \\$0.004405"

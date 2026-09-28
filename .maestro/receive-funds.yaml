@@ -1,0 +1,38 @@
+# The receive flow is testnet-only and copies the full owner address.
+appId: com.jakrim.tape
+---
+- runFlow: helpers/launch.yaml
+- tapOn: "Account"
+- scrollUntilVisible:
+    element: "Mainnet · view only"
+    direction: UP
+- tapOn: "Mainnet · view only"
+- runFlow:
+    when:
+      visible:
+        id: "create-device-wallet"
+    commands:
+      - tapOn:
+          id: "create-device-wallet"
+- extendedWaitUntil:
+    visible:
+      id: "wallet-address"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "receive-funds"
+    direction: DOWN
+- tapOn:
+    id: "receive-funds"
+- assertVisible: "Test USDC only. Do not send real funds."
+- assertVisible: "Switch to testnet"
+- tapOn:
+    id: "receive-switch-testnet"
+- extendedWaitUntil:
+    visible:
+      id: "receive-address"
+    timeout: 10000
+- tapOn:
+    id: "copy-receive-address"
+- assertVisible: "Address copied"
+- takeScreenshot: receive-testnet
